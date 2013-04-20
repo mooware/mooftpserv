@@ -9,6 +9,9 @@ namespace mooftpserv.lib
 {
     public class Session
     {
+        // data types to set with the TYPE command
+        enum DataType { ASCII, IMAGE };
+
         // version from AssemblyInfo
         private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
         // fake responses for SYST command
@@ -17,6 +20,8 @@ namespace mooftpserv.lib
         private static string[] HELLO_TEXT = { "What can I do for you?", "Good day, sir or madam.", "Hey ho let's go!", "The poor man's file transfer protocol." };
         // response text for general ok messages
         private static string[] OK_TEXT = { "Sounds good.", "Barely acceptable.", "Alright, I'll do it..." };
+        // Result for FEAT command
+        private static string[] FEATURES = { "MDTM", "SIZE" };
 
         private TcpClient socket;
         private IAuthHandler authHandler;
@@ -30,6 +35,8 @@ namespace mooftpserv.lib
         private bool loggedIn = false;
         private string loggedInUser = null;
 
+        private DataType type = DataType.ASCII;
+
         public Session(TcpClient socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler)
         {
             this.socket = socket;
@@ -38,7 +45,7 @@ namespace mooftpserv.lib
             this.stream = socket.GetStream();
             this.recvBuffer = new byte[10240];
             this.recvBytes = 0;
-            this.randomTextIndex = new Random(socket.Client.Handle.ToInt32());
+            this.randomTextIndex = new Random();
 
             this.thread = new Thread(new ThreadStart(this.Work));
             this.thread.Start();
@@ -104,19 +111,89 @@ namespace mooftpserv.lib
                     socket.Close();
                     break;
                 }
-                case "PWD":
-                    Respond(257, fsHandler.GetCurrentDirectory());
+                case "FEAT":
+                {
+                    Respond(211, "Features:\r\n " + String.Join("\r\n ", FEATURES), true);
+                    Respond(211, "Features done.");
                     break;
+                }
+                case "TYPE":
+                {
+                    if (arguments == "A" || arguments == "A N") {
+                        type = DataType.ASCII;
+                        Respond(200, "Switching to ASCII mode.");
+                    } else if (arguments == "I") {
+                        type = DataType.IMAGE;
+                        Respond(200, "Switching to binary mode.");
+                    } else {
+                        Respond(500, "Unknown TYPE arguments.");
+                    }
+                    break;
+                }
+                case "PWD":
+                {
+                    Respond(257, EscapePath(fsHandler.GetCurrentDirectory()));
+                    break;
+                }
                 case "CWD":
+                {
                     string ret = fsHandler.ChangeCurrentDirectory(arguments);
                     if (ret == null)
                         Respond(250, getRandomText(OK_TEXT));
                     else
                         Respond(550, ret);
                     break;
+                }
+                case "CDUP":
+                {
+                    string ret = fsHandler.ChangeCurrentDirectory("..");
+                    if (ret == null)
+                        Respond(250, getRandomText(OK_TEXT));
+                    else
+                        Respond(550, ret);
+                    break;
+                }
+                case "MKD":
+                {
+                    string ret = fsHandler.CreateDirectory(arguments);
+                    if (ret == null)
+                        Respond(250, getRandomText(OK_TEXT));
+                    else
+                        Respond(550, ret);
+                    break;
+                }
+                case "RMD":
+                {
+                    string ret = fsHandler.RemoveDirectory(arguments);
+                    if (ret == null)
+                        Respond(250, getRandomText(OK_TEXT));
+                    else
+                        Respond(550, ret);
+                    break;
+                }
+                case "MDTM":
+                {
+                    DateTime? time = fsHandler.GetLastModifiedTime(arguments);
+                    if (time != null)
+                        Respond(213, FormatTime(time.Value));
+                    else
+                        Respond(550, "Could not get file modification time.");
+                    break;
+                }
+                case "SIZE":
+                {
+                    long size = fsHandler.GetFileSize(arguments);
+                    if (size > -1)
+                        Respond(213, size.ToString());
+                    else
+                        Respond(550, "Could not get file size.");
+                    break;
+                }
                 default:
+                {
                     Respond(500, "Unknown command.");
                     break;
+                }
             }
         }
 
@@ -150,10 +227,11 @@ namespace mooftpserv.lib
             return result;
         }
 
-        private void Respond(uint code, string desc = null)
+        private void Respond(uint code, string desc = null, bool moreFollows = false)
         {
             string response = code.ToString();
-            if (desc != null) response += " " + desc;
+            if (desc != null)
+                response += (moreFollows ? '-' : ' ') + desc;
             response += "\r\n";
 
             byte[] sendBuffer = Encoding.ASCII.GetBytes(response);
@@ -185,6 +263,16 @@ namespace mooftpserv.lib
             } else {
                 Respond(530, "Please login first.");
             }
+        }
+
+        private string EscapePath(string path)
+        {
+            return '"' + path.Replace("\"", "\\\"") + '"';
+        }
+
+        private string FormatTime(DateTime time)
+        {
+            return time.ToString("yyyyMMddHHmmss");
         }
 
         private string getRandomText(string[] texts)
