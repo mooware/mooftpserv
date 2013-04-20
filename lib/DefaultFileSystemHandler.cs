@@ -69,13 +69,18 @@ namespace mooftpserv.lib
             return null;
         }
 
-        public string[] List(string path)
+        public FileSystemEntry[] ListEntries(string path)
         {
-            FileSystemInfo[] entries = currentDir.GetFileSystemInfos();
-            List<string> result = new List<string>();
+            FileSystemInfo[] files = currentDir.GetFileSystemInfos();
+            List<FileSystemEntry> result = new List<FileSystemEntry>();
 
-            foreach (FileSystemInfo entry in entries) {
-                result.Add(entry.FullName);
+            foreach (FileSystemInfo file in files) {
+                FileSystemEntry entry = new FileSystemEntry();
+                entry.Name = file.Name;
+                entry.IsDirectory = file.Attributes.HasFlag(FileAttributes.Directory);
+                entry.Size = (entry.IsDirectory ? 0 : ((FileInfo) file).Length);
+                entry.LastModifiedTime = file.LastWriteTime.ToUniversalTime();
+                result.Add(entry);
             }
 
             return result.ToArray();

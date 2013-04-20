@@ -14,10 +14,10 @@ namespace mooftpserv.lib
 
         // version from AssemblyInfo
         private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
-        // fake responses for SYST command
-        private static string[] SYST_TEXT = { "Windows For Workgroups 3.11", "Super Nintendo", "Cheesecake 2003", "MOONIX", "Mooltics", "BS2000" };
+        // monthnames for LIST command, since DateTime returns localized names
+        private static string[] MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         // response text for initial response. preceeded by application name and version number.
-        private static string[] HELLO_TEXT = { "What can I do for you?", "Good day, sir or madam.", "Hey ho let's go!", "The poor man's file transfer protocol." };
+        private static string[] HELLO_TEXT = { "What can I do for you?", "Good day, sir or madam.", "Hey ho let's go!", "The poor man's FTP server." };
         // response text for general ok messages
         private static string[] OK_TEXT = { "Sounds good.", "Barely acceptable.", "Alright, I'll do it..." };
         // Result for FEAT command
@@ -36,6 +36,9 @@ namespace mooftpserv.lib
         private string loggedInUser = null;
 
         private DataType type = DataType.ASCII;
+        // remote data port. null when PASV is used.
+        private IPEndPoint dataPort;
+        private Socket dataSocket;
 
         public Session(TcpClient socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler)
         {
@@ -102,7 +105,7 @@ namespace mooftpserv.lib
             switch (verb) {
                 case "SYST":
                 {
-                    Respond(215, getRandomText(SYST_TEXT));
+                    Respond(215, "UNIX Type: L8");
                     break;
                 }
                 case "QUIT":
@@ -128,6 +131,24 @@ namespace mooftpserv.lib
                     } else {
                         Respond(500, "Unknown TYPE arguments.");
                     }
+                    break;
+                }
+                case "PORT":
+                {
+                    IPEndPoint port = ParseAddress(arguments);
+                    if (port == null) {
+                        Respond(500, "Invalid host-port format.");
+                        break;
+                    }
+
+                    IPAddress clientIP = ((IPEndPoint) socket.Client.RemoteEndPoint).Address;
+                    if (!port.Address.Equals(clientIP)) {
+                        Respond(500, "Specified IP differs from client IP");
+                        break;
+                    }
+
+                    dataPort = port;
+                    Respond(200, getRandomText(OK_TEXT));
                     break;
                 }
                 case "PWD":
@@ -187,6 +208,19 @@ namespace mooftpserv.lib
                         Respond(213, size.ToString());
                     else
                         Respond(550, "Could not get file size.");
+                    break;
+                }
+                case "LIST":
+                {
+                    FileSystemEntry[] list = fsHandler.ListEntries(arguments);
+                    if (list == null) {
+                        Respond(500, "Failed to get directory listing.");
+                        break;
+                    }
+
+                    SendData(FormatDirList(list),
+                             150, "Sending directory listing.",
+                             226, "Directory listing done.");
                     break;
                 }
                 default:
@@ -270,9 +304,85 @@ namespace mooftpserv.lib
             return '"' + path.Replace("\"", "\\\"") + '"';
         }
 
+        private IPEndPoint ParseAddress(string address)
+        {
+            string[] tokens = address.Split(',');
+            byte[] bytes = new byte[tokens.Length];
+            for (int i = 0; i < tokens.Length; ++i) {
+                if (!byte.TryParse(tokens[i], out bytes[i]))
+                    return null;
+            }
+
+            long ip = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
+            int port = bytes[4] << 8 | bytes[5];
+            return new IPEndPoint(ip, port);
+        }
+
+        private string FormatAddress(IPEndPoint address)
+        {
+            byte[] ip = address.Address.GetAddressBytes();
+            int port = address.Port;
+
+            return String.Format("{0},{1},{2},{3},{4},{5}",
+                                 ip[0], ip[1], ip[2], ip[3],
+                                 port & 0xFF00, port & 0x00FF);
+        }
+
         private string FormatTime(DateTime time)
         {
             return time.ToString("yyyyMMddHHmmss");
+        }
+
+        private string FormatDirList(FileSystemEntry[] list)
+        {
+            int maxSizeChars = 0;
+            int maxNameChars = 0;
+            foreach (FileSystemEntry entry in list) {
+                maxSizeChars = Math.Max(maxSizeChars, entry.Size.ToString().Length);
+                maxNameChars = Math.Max(maxNameChars, entry.Name.Length);
+            }
+
+            DateTime sixMonthsAgo = DateTime.Now.ToUniversalTime().AddMonths(-6);
+
+            string result = "";
+            foreach (FileSystemEntry entry in list) {
+                char dirflag = (entry.IsDirectory ? 'd' : '-');
+                string size = entry.Size.ToString().PadLeft(maxSizeChars);
+                string name = entry.Name.PadLeft(maxNameChars);
+                string modtime = MONTHS[entry.LastModifiedTime.Month - 1];
+                if (entry.LastModifiedTime < sixMonthsAgo)
+                    modtime += entry.LastModifiedTime.ToString(" dd  yyyy");
+                else
+                    modtime += entry.LastModifiedTime.ToString(" dd hh:mm");
+
+                result += String.Format("{0}rwxr--r-- 1 owner group {1} {2} {3}\r\n",
+                                        dirflag, size, modtime, name);
+            }
+
+            return result;
+        }
+
+        private void SendData(string data, uint beforeCode, string beforeDesc, uint afterCode, string afterDesc) {
+            if (dataPort == null && dataSocket == null) {
+                Respond(425, "No data port configured, use PORT or PASV.");
+                return;
+            }
+
+            if (dataPort != null) {
+                dataSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+                dataSocket.Connect(dataPort);
+            } else {
+                throw new NotImplementedException();
+            }
+
+            Respond(beforeCode, beforeDesc);
+
+            byte[] buf = Encoding.ASCII.GetBytes(data);
+            dataSocket.Send(buf);
+            dataSocket.Close();
+            dataSocket = null;
+
+            Respond(afterCode, afterDesc);
         }
 
         private string getRandomText(string[] texts)

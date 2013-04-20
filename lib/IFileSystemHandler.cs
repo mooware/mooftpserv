@@ -3,6 +3,17 @@ using System;
 namespace mooftpserv.lib
 {
     /// <summary>
+    /// File system entry as returned by List.
+    /// </summary>
+    public struct FileSystemEntry
+    {
+        public string Name;
+        public bool IsDirectory;
+        public long Size;
+        public DateTime LastModifiedTime;
+    }
+
+    /// <summary>
     /// Interface for file system access from FTP.
     /// </summary>
     public interface IFileSystemHandler
@@ -51,12 +62,12 @@ namespace mooftpserv.lib
         string RemoveDirectory(string path);
 
         /// <summary>
-        /// LIST: Return a list of files in the current directory, or the optionally specified path.
+        /// LIST: Return a list of files and folders in the current directory, or the optionally specified path.
         /// </summary>
         /// <param name='path'>
-        /// An array of filenames.
+        /// An array of file system entries.
         /// </param>
-        string[] List(string path = null);
+        FileSystemEntry[] ListEntries(string path = null);
 
         /// <summary>
         /// SIZE: Gets the size of a file in bytes.
