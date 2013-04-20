@@ -28,6 +28,7 @@ namespace mooftpserv.lib
 
         private Random randomTextIndex;
         private bool loggedIn = false;
+        private string loggedInUser = null;
 
         public Session(TcpClient socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler)
         {
@@ -63,7 +64,6 @@ namespace mooftpserv.lib
                 loggedIn = true;
             }
 
-            string user = null;
             while (socket.Connected) {
                 string command = ReadCommand();
 
@@ -76,32 +76,13 @@ namespace mooftpserv.lib
                 string verb = tokens[0];
                 string args = (tokens.Length > 1 ? tokens[1] : null);
 
-                if (loggedIn) {
+                if (loggedIn)
                     ProcessCommand(verb, args);
+                else if (verb == "QUIT") { // QUIT should always be allowed
+                    Respond(221, "Bye.");
+                    socket.Close();
                 } else {
-                    if (verb == "USER" && args != null) {
-                        if (authHandler.AllowLogin(args, null)) {
-                            loggedIn = true;
-                            Respond(230, "Login successful.");
-                        } else {
-                            user = args;
-                            Respond(331, "Password please.");
-                        }
-                    } else if (verb == "PASS") {
-                        if (user != null) {
-                            if (authHandler.AllowLogin(user, args)) {
-                                loggedIn = true;
-                                Respond(230, "Login successful.");
-                            } else {
-                                user = null;
-                                Respond(530, "Login failed, please try again.");
-                            }
-                        } else {
-                            Respond(530, "No USER specified.");
-                        }
-                    } else {
-                        Respond(530, "Please login first.");
-                    }
+                    HandleAuth(verb, args);
                 }
             }
         }
@@ -110,8 +91,16 @@ namespace mooftpserv.lib
         {
             switch (verb) {
                 case "SYST":
+                {
                     Respond(215, getRandomText(SYST_TEXT));
                     break;
+                }
+                case "QUIT":
+                {
+                    Respond(221, "Bye.");
+                    socket.Close();
+                    break;
+                }
                 case "PWD":
                     Respond(257, fsHandler.GetCurrentDirectory());
                     break;
@@ -166,6 +155,33 @@ namespace mooftpserv.lib
 
             byte[] sendBuffer = Encoding.ASCII.GetBytes(response);
             stream.Write(sendBuffer, 0, sendBuffer.Length);
+        }
+
+        private void HandleAuth(string verb, string args)
+        {
+            if (verb == "USER" && args != null) {
+                if (authHandler.AllowLogin(args, null)) {
+                    Respond(230, "Login successful.");
+                    loggedIn = true;
+                } else {
+                    loggedInUser = args;
+                    Respond(331, "Password please.");
+                }
+            } else if (verb == "PASS") {
+                if (loggedInUser != null) {
+                    if (authHandler.AllowLogin(loggedInUser, args)) {
+                        Respond(230, "Login successful.");
+                        loggedIn = true;
+                    } else {
+                        loggedInUser = null;
+                        Respond(530, "Login failed, please try again.");
+                    }
+                } else {
+                    Respond(530, "No USER specified.");
+                }
+            } else {
+                Respond(530, "Please login first.");
+            }
         }
 
         private string getRandomText(string[] texts)
