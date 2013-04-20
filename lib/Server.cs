@@ -42,10 +42,12 @@ namespace mooftpserv.lib
                 sessions.Add(session);
 
                 // purge old sessions
-                foreach (Session s in sessions)
+                for (int i = sessions.Count - 1; i >= 0; --i)
                 {
-                    if (!s.IsOpen)
-                        sessions.Remove(s);
+                    if (!sessions[i].IsOpen) {
+                        sessions.RemoveAt(i);
+                        --i;
+                    }
                 }
             }
         }
