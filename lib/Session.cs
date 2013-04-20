@@ -70,10 +70,13 @@ namespace mooftpserv.lib
                 if (command == null) {
                     Respond(500, "Failed to read command, closing connection.");
                     break;
+                } else if (command.Trim() == "") {
+                    // ignore empty lines
+                    continue;
                 }
 
                 string[] tokens = command.Split(new char[] { ' ' }, 2);
-                string verb = tokens[0];
+                string verb = tokens[0].ToUpper(); // commands are case insensitive
                 string args = (tokens.Length > 1 ? tokens[1] : null);
 
                 if (loggedIn)
