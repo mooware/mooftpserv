@@ -9,9 +9,6 @@ namespace mooftpserv.lib
 {
     public class Session
     {
-        // data types to set with the TYPE command
-        enum DataType { ASCII, IMAGE };
-
         // version from AssemblyInfo
         private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
         // monthnames for LIST command, since DateTime returns localized names
@@ -35,7 +32,6 @@ namespace mooftpserv.lib
         private bool loggedIn = false;
         private string loggedInUser = null;
 
-        private DataType type = DataType.ASCII;
         // remote data port. null when PASV is used.
         private IPEndPoint dataPort;
         private Socket dataSocket;
@@ -122,11 +118,11 @@ namespace mooftpserv.lib
                 }
                 case "TYPE":
                 {
+                    // I don't see what difference the types make,
+                    // but the RFC says that I should support them
                     if (arguments == "A" || arguments == "A N") {
-                        type = DataType.ASCII;
                         Respond(200, "Switching to ASCII mode.");
                     } else if (arguments == "I") {
-                        type = DataType.IMAGE;
                         Respond(200, "Switching to binary mode.");
                     } else {
                         Respond(500, "Unknown TYPE arguments.");
