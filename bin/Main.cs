@@ -1,7 +1,7 @@
 using System;
 using mooftpserv;
 
-namespace mooftpserv.bin
+namespace mooftpserv
 {
     class MainClass
     {
