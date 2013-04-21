@@ -106,6 +106,8 @@ namespace mooftpserv
                             ProcessCommand(verb, args);
                         else if (verb == "QUIT") { // QUIT should always be allowed
                             Respond(221, "Bye.");
+                            // first flush, then close
+                            controlSocket.Shutdown(SocketShutdown.Both);
                             controlSocket.Close();
                         } else {
                             HandleAuth(verb, args);
@@ -133,6 +135,8 @@ namespace mooftpserv
                 case "QUIT":
                 {
                     Respond(221, "Bye.");
+                    // first flush, then close
+                    controlSocket.Shutdown(SocketShutdown.Both);
                     controlSocket.Close();
                     break;
                 }
@@ -482,6 +486,7 @@ namespace mooftpserv
                             socket.Send(buffer, bytes, SocketFlags.None);
                         }
 
+                        socket.Shutdown(SocketShutdown.Both);
                         Respond(226, "Transfer complete.");
                     } catch (Exception ex) {
                         Respond(500, ex.Message);
@@ -522,6 +527,7 @@ namespace mooftpserv
                             stream.Write(buffer, 0, bytes);
                         }
 
+                        socket.Shutdown(SocketShutdown.Both);
                         Respond(226, "Transfer complete.");
                     } catch (Exception ex) {
                         Respond(500, ex.Message);
@@ -567,6 +573,7 @@ namespace mooftpserv
                 } else {
                     // passive mode
                     Socket socket = dataSocket.Accept();
+                    dataSocket.Shutdown(SocketShutdown.Both);
                     dataSocket.Close();
                     return socket;
                 }
