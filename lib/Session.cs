@@ -270,6 +270,15 @@ namespace mooftpserv.lib
                     ReceiveData(stream);
                     break;
                 }
+                case "DELE":
+                {
+                    string ret = fsHandler.RemoveFile(arguments);
+                    if (ret == null)
+                        Respond(250, GetRandomText(OK_TEXT));
+                    else
+                        Respond(550, ret);
+                    break;
+                }
                 case "MDTM":
                 {
                     DateTime? time = fsHandler.GetLastModifiedTime(arguments);

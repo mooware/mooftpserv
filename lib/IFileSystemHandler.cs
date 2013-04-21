@@ -86,6 +86,17 @@ namespace mooftpserv.lib
         Stream WriteFile(string path);
 
         /// <summary>
+        /// DELE: Deletes a file.
+        /// </summary>
+        /// <returns>
+        /// Null or an error message.
+        /// </returns>
+        /// <param name='path'>
+        /// A relative or absolute path for the file.
+        /// </param>
+        string RemoveFile(string path);
+
+        /// <summary>
         /// LIST: Return a list of files and folders in the current directory, or the optionally specified path.
         /// </summary>
         /// <param name='path'>

@@ -97,6 +97,21 @@ namespace mooftpserv.lib
             return null;
         }
 
+        public string RemoveFile(string path)
+        {
+            string newPath = ResolvePath(path);
+            if (!File.Exists(newPath))
+                return null;
+
+            try {
+                File.Delete(newPath);
+            } catch (Exception ex) {
+                return ex.Message;
+            }
+
+            return null;
+        }
+
         public FileSystemEntry[] ListEntries(string path)
         {
             FileSystemInfo[] files = currentDir.GetFileSystemInfos();
