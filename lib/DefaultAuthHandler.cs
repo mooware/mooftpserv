@@ -1,6 +1,6 @@
 using System;
 
-namespace mooftpserv.lib
+namespace mooftpserv
 {
     public class DefaultAuthHandler : IAuthHandler
     {

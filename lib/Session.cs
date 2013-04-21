@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace mooftpserv.lib
+namespace mooftpserv
 {
     public class Session
     {

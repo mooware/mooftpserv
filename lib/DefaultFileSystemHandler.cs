@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace mooftpserv.lib
+namespace mooftpserv
 {
     public class DefaultFileSystemHandler : IFileSystemHandler
     {

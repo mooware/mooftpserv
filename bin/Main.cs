@@ -1,5 +1,5 @@
 using System;
-using mooftpserv.lib;
+using mooftpserv;
 
 namespace mooftpserv.bin
 {

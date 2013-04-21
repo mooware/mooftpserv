@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace mooftpserv.lib
+namespace mooftpserv
 {
     /// <summary>
     /// File system entry as returned by List.

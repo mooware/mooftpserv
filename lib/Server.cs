@@ -4,7 +4,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 
-namespace mooftpserv.lib
+namespace mooftpserv
 {
     public class Server
     {
