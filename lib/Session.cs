@@ -272,7 +272,7 @@ namespace mooftpserv.lib
             if (endPos == -1)
                 return null;
 
-            string result = Encoding.UTF8.GetString(recvBuffer, 0, endPos);
+            string result = DecodeString(recvBuffer, endPos);
 
             // remove the command from the buffer
             recvBytes -= (endPos + 2);
@@ -288,7 +288,7 @@ namespace mooftpserv.lib
                 response += (moreFollows ? '-' : ' ') + desc;
             response += "\r\n";
 
-            byte[] sendBuffer = Encoding.UTF8.GetBytes(response);
+            byte[] sendBuffer = EncodeString(response);
             stream.Write(sendBuffer, 0, sendBuffer.Length);
         }
 
@@ -399,7 +399,7 @@ namespace mooftpserv.lib
 
             Respond(beforeCode, beforeDesc);
 
-            byte[] buf = Encoding.UTF8.GetBytes(data);
+            byte[] buf = EncodeString(data);
             try {
                 socket.Send(buf);
                 socket.Close();
@@ -423,6 +423,22 @@ namespace mooftpserv.lib
                 dataSocket.Bind(new IPEndPoint(serverIP, 0));
                 dataSocket.Listen(1);
             }
+        }
+
+        private byte[] EncodeString(string data)
+        {
+            return Encoding.UTF8.GetBytes(data);
+        }
+
+        private string DecodeString(byte[] data, int len)
+        {
+            return Encoding.UTF8.GetString(data, 0, len);
+        }
+
+        private string DecodeString(byte[] data)
+        {
+            return DecodeString(data, data.Length);
+        }
 
         }
 
