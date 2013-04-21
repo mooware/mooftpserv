@@ -91,9 +91,10 @@ namespace mooftpserv
                     string verb;
                     string args;
                     if (!ReadCommand(out verb, out args)) {
-                        // check if the socket is writable
-                        if (controlSocket.Poll(1, SelectMode.SelectWrite)) {
-                            Respond(500, "Failed to read command, closing connection.");
+                        if (controlSocket.Connected) {
+                            // assume clean disconnect if there are no buffered bytes
+                            if (cmdRcvBytes != 0)
+                                Respond(500, "Failed to read command, closing connection.");
                             controlSocket.Close();
                         }
                         break;
