@@ -141,7 +141,8 @@ namespace mooftpserv
             foreach (FileSystemInfo file in files) {
                 FileSystemEntry entry = new FileSystemEntry();
                 entry.Name = file.Name;
-                entry.IsDirectory = file.Attributes.HasFlag(FileAttributes.Directory);
+                // CF is missing FlagsAttribute.HasFlag
+                entry.IsDirectory = ((file.Attributes & FileAttributes.Directory) == FileAttributes.Directory);
                 entry.Size = (entry.IsDirectory ? 0 : ((FileInfo) file).Length);
                 entry.LastModifiedTimeUtc = file.LastWriteTime.ToUniversalTime();
                 result.Add(entry);
@@ -166,13 +167,15 @@ namespace mooftpserv
             if (!File.Exists(fullpath))
                 return ResultOrError<DateTime>.MakeError("File does not exist.");
 
-            DateTime time = new FileInfo(fullpath).LastWriteTimeUtc;
+            // CF is missing FileInfo.LastWriteTimeUtc
+            DateTime time = new FileInfo(fullpath).LastWriteTime.ToUniversalTime();
             return ResultOrError<DateTime>.MakeResult(time);
         }
 
         private string ResolvePath(string path)
         {
-            if (String.IsNullOrWhiteSpace(path))
+            // CF is missing String.IsNullOrWhiteSpace
+            if (path == null || path.Trim() == "")
                 return null;
 
             try {

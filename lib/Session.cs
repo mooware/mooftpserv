@@ -28,6 +28,7 @@ namespace mooftpserv
         private ILogHandler logHandler;
         private Thread thread;
 
+        private bool threadAlive = false;
         private Random randomTextIndex;
         private bool loggedIn = false;
         private string loggedInUser = null;
@@ -36,6 +37,7 @@ namespace mooftpserv
         // remote data port. null when PASV is used.
         private IPEndPoint dataPort = null;
         private Socket dataSocket = null;
+        private bool dataSocketBound = false;
         private IPEndPoint peerEndPoint;
         private byte[] cmdRcvBuffer;
         private int cmdRcvBytes;
@@ -56,19 +58,24 @@ namespace mooftpserv
 
         public bool IsOpen
         {
-            get { return thread.IsAlive; }
+            // CF is missing Thread.IsAlive
+            get { return threadAlive; }
         }
 
         public void Start()
         {
-            if (!thread.IsAlive)
+            if (!threadAlive) {
                 this.thread.Start();
+                threadAlive = true;
+            }
         }
 
         public void Stop()
         {
-            if (thread.IsAlive)
+            if (threadAlive) {
+                threadAlive = false;
                 thread.Abort();
+            }
 
             if (controlSocket.Connected)
                 controlSocket.Close();
@@ -124,6 +131,7 @@ namespace mooftpserv
                     controlSocket.Close();
 
                 logHandler.ClosedControlConnection(peerEndPoint);
+                threadAlive = false;
             }
         }
 
@@ -391,16 +399,17 @@ namespace mooftpserv
             cmdRcvBytes -= (endPos + 2);
             Array.Copy(cmdRcvBuffer, endPos + 2, cmdRcvBuffer, 0, cmdRcvBytes);
 
-            string[] tokens = command.Split(new char[] { ' ' }, 2);
+            // CF is missing a limited String.Split
+            string[] tokens = command.Split(' ');
             verb = tokens[0].ToUpper(); // commands are case insensitive
-            args = (tokens.Length > 1 ? tokens[1] : null);
+            args = (tokens.Length > 1 ? String.Join(" ", tokens, 1, tokens.Length - 1) : null);
 
             logHandler.ReceivedCommand(peerEndPoint, verb, args);
 
             return true;
         }
 
-        private void Respond(uint code, string desc = null, bool moreFollows = false)
+        private void Respond(uint code, string desc, bool moreFollows)
         {
             string response = code.ToString();
             if (desc != null)
@@ -411,6 +420,11 @@ namespace mooftpserv
             controlSocket.Send(sendBuffer);
 
             logHandler.SentResponse(peerEndPoint, code, desc);
+        }
+
+        private void Respond(uint code, string desc)
+        {
+            Respond(code, desc, false);
         }
 
         private void HandleAuth(string verb, string args)
@@ -445,8 +459,12 @@ namespace mooftpserv
             string[] tokens = address.Split(',');
             byte[] bytes = new byte[tokens.Length];
             for (int i = 0; i < tokens.Length; ++i) {
-                if (!byte.TryParse(tokens[i], out bytes[i]))
+                try {
+                    // CF is missing TryParse
+                    bytes[i] = byte.Parse(tokens[i]);
+                } catch (Exception) {
                     return null;
+                }
             }
 
             long ip = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
@@ -585,13 +603,14 @@ namespace mooftpserv
             if (listen) {
                 IPAddress serverIP = ((IPEndPoint) controlSocket.LocalEndPoint).Address;
                 dataSocket.Bind(new IPEndPoint(serverIP, 0));
+                dataSocketBound = true; // CF is missing Socket.IsBound
                 dataSocket.Listen(1);
             }
         }
 
         private Socket OpenDataConnection()
         {
-            if (dataPort == null && !dataSocket.IsBound) {
+            if (dataPort == null && !dataSocketBound) {
                 Respond(425, "No data port configured, use PORT or PASV.");
                 return null;
             }
@@ -608,6 +627,7 @@ namespace mooftpserv
                     // passive mode
                     Socket socket = dataSocket.Accept();
                     dataSocket.Close();
+                    dataSocketBound = false;
                     return socket;
                 }
             } catch (Exception ex) {

@@ -174,7 +174,7 @@ namespace mooftpserv
         /// <param name='path'>
         /// An array of file system entries or an error string.
         /// </param>
-        ResultOrError<FileSystemEntry[]> ListEntries(string path = null);
+        ResultOrError<FileSystemEntry[]> ListEntries(string path);
 
         /// <summary>
         /// SIZE: Gets the size of a file in bytes.
