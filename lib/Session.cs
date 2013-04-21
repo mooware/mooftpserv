@@ -91,7 +91,8 @@ namespace mooftpserv
                     string verb;
                     string args;
                     if (!ReadCommand(out verb, out args)) {
-                        if (controlSocket.Connected) {
+                        // check if the socket is writable
+                        if (controlSocket.Poll(1, SelectMode.SelectWrite)) {
                             Respond(500, "Failed to read command, closing connection.");
                             controlSocket.Close();
                         }
@@ -573,7 +574,6 @@ namespace mooftpserv
                 } else {
                     // passive mode
                     Socket socket = dataSocket.Accept();
-                    dataSocket.Shutdown(SocketShutdown.Both);
                     dataSocket.Close();
                     return socket;
                 }
