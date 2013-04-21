@@ -113,6 +113,26 @@ namespace mooftpserv
             return ResultOrError<bool>.MakeResult(true);
         }
 
+        public ResultOrError<bool> RenameFile(string fromPath, string toPath)
+        {
+            string fullFromPath = ResolvePath(fromPath);
+            string fullToPath = ResolvePath(toPath);
+
+            if (!File.Exists(fullFromPath) && !Directory.Exists(fullFromPath))
+                return ResultOrError<bool>.MakeError("From-Path does not exist.");
+
+            if (File.Exists(fullToPath) || Directory.Exists(fullToPath))
+                return ResultOrError<bool>.MakeError("To-Path already exists.");
+
+            try {
+                File.Move(fullFromPath, fullToPath);
+            } catch (Exception ex) {
+                return ResultOrError<bool>.MakeError(ex.Message);
+            }
+
+            return ResultOrError<bool>.MakeResult(true);
+        }
+
         public ResultOrError<FileSystemEntry[]> ListEntries(string path)
         {
             FileSystemInfo[] files = currentDir.GetFileSystemInfos();

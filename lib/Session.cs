@@ -31,6 +31,7 @@ namespace mooftpserv
         private Random randomTextIndex;
         private bool loggedIn = false;
         private string loggedInUser = null;
+        private string renameFromPath = null;
 
         // remote data port. null when PASV is used.
         private IPEndPoint dataPort = null;
@@ -283,6 +284,32 @@ namespace mooftpserv
                 case "DELE":
                 {
                     ResultOrError<bool> ret = fsHandler.RemoveFile(arguments);
+                    if (ret.HasError)
+                        Respond(550, ret.Error);
+                    else
+                        Respond(250, GetRandomText(OK_TEXT));
+                    break;
+                }
+                case "RNFR":
+                {
+                    if (arguments == null || arguments.Trim() == "") {
+                        Respond(500, "Empty path is invalid.");
+                        break;
+                    }
+
+                    renameFromPath = arguments;
+                    Respond(350, "Waiting for target path.");
+                    break;
+                }
+                case "RNTO":
+                {
+                    if (renameFromPath == null) {
+                        Respond(503, "Use RNFR before RNTO.");
+                        break;
+                    }
+
+                    ResultOrError<bool> ret = fsHandler.RenameFile(renameFromPath, arguments);
+                    renameFromPath = null;
                     if (ret.HasError)
                         Respond(550, ret.Error);
                     else

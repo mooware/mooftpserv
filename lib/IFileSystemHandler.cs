@@ -155,6 +155,20 @@ namespace mooftpserv
         ResultOrError<bool> RemoveFile(string path);
 
         /// <summary>
+        /// RNFR, RNTO: Renames or moves a file or directory.
+        /// </summary>
+        /// <returns>
+        /// A bool or an error string. The bool is not actually used.
+        /// </returns>
+        /// <param name="fromPath">
+        /// The relative or absolute path of an existing file or directory.
+        /// </param>
+        /// <param name="toPath">
+        /// A relative or absolute non-existing path to which the file will be renamed or moved.
+        /// </param>
+        ResultOrError<bool> RenameFile(string fromPath, string toPath);
+
+        /// <summary>
         /// LIST: Return a list of files and folders in the current directory, or the optionally specified path.
         /// </summary>
         /// <param name='path'>
