@@ -136,6 +136,16 @@ namespace mooftpserv.lib
                     controlSocket.Close();
                     break;
                 }
+                case "USER":
+                {
+                    Respond(230, "You are already logged in.");
+                    break;
+                }
+                case "PASS":
+                {
+                    Respond(230, "You are already logged in.");
+                    break;
+                }
                 case "FEAT":
                 {
                     Respond(211, "Features:\r\n " + String.Join("\r\n ", FEATURES), true);
