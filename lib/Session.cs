@@ -22,15 +22,11 @@ namespace mooftpserv.lib
         // Result for FEAT command
         private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "UTF8" };
 
-        private TcpClient commandSocket;
+        private Socket commandSocket;
         private IAuthHandler authHandler;
         private IFileSystemHandler fsHandler;
         private ILogHandler logHandler;
         private Thread thread;
-        private NetworkStream stream;
-        private IPEndPoint peerEndPoint;
-        private byte[] cmdRcvBuffer;
-        private int cmdRcvBytes;
 
         private Random randomTextIndex;
         private bool loggedIn = false;
@@ -39,21 +35,22 @@ namespace mooftpserv.lib
         // remote data port. null when PASV is used.
         private IPEndPoint dataPort = null;
         private Socket dataSocket = null;
+        private IPEndPoint peerEndPoint;
+        private byte[] cmdRcvBuffer;
+        private int cmdRcvBytes;
 
-        public Session(TcpClient socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
+        public Session(Socket socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
         {
             this.commandSocket = socket;
             this.authHandler = authHandler;
             this.fsHandler = fileSystemHandler;
             this.logHandler = logHandler;
-            this.stream = socket.GetStream();
-            this.peerEndPoint = (IPEndPoint) socket.Client.RemoteEndPoint;
+            this.peerEndPoint = (IPEndPoint) socket.RemoteEndPoint;
             this.cmdRcvBuffer = new byte[BUFFER_SIZE];
             this.cmdRcvBytes = 0;
             this.randomTextIndex = new Random();
 
             this.thread = new Thread(new ThreadStart(this.Work));
-            this.thread.Start();
         }
 
         public bool IsOpen
@@ -61,51 +58,68 @@ namespace mooftpserv.lib
             get { return thread.IsAlive; }
         }
 
-        public void Close()
+        public void Start()
         {
-            thread.Abort();
-            commandSocket.Close();
+            if (!thread.IsAlive)
+                this.thread.Start();
+        }
+
+        public void Stop()
+        {
+            if (thread.IsAlive)
+                thread.Abort();
+
+            if (commandSocket.Connected)
+                commandSocket.Close();
+
+            if (dataSocket != null && dataSocket.Connected)
+                dataSocket.Close();
         }
 
         private void Work()
         {
             logHandler.NewControlConnection(peerEndPoint);
-            Respond(220, String.Format("This is mooftpserv v{0}. {1}", LIB_VERSION, GetRandomText(HELLO_TEXT)));
+            try {
+                Respond(220, String.Format("This is mooftpserv v{0}. {1}", LIB_VERSION, GetRandomText(HELLO_TEXT)));
 
-            // allow anonymous login?
-            if (authHandler.AllowLogin(null, null)) {
-                loggedIn = true;
-            }
-
-            while (commandSocket.Connected) {
-                string verb;
-                string args;
-                if (!ReadCommand(out verb, out args)) {
-                    if (commandSocket.Connected) {
-                        Respond(500, "Failed to read command, closing connection.");
-                        commandSocket.Close();
-                    }
-                    break;
-                } else if (verb.Trim() == "") {
-                    // ignore empty lines
-                    continue;
+                // allow anonymous login?
+                if (authHandler.AllowLogin(null, null)) {
+                    loggedIn = true;
                 }
 
-                try {
-                    if (loggedIn)
-                        ProcessCommand(verb, args);
-                    else if (verb == "QUIT") { // QUIT should always be allowed
-                        Respond(221, "Bye.");
-                        commandSocket.Close();
-                    } else {
-                        HandleAuth(verb, args);
+                while (commandSocket.Connected) {
+                    string verb;
+                    string args;
+                    if (!ReadCommand(out verb, out args)) {
+                        if (commandSocket.Connected) {
+                            Respond(500, "Failed to read command, closing connection.");
+                            commandSocket.Close();
+                        }
+                        break;
+                    } else if (verb.Trim() == "") {
+                        // ignore empty lines
+                        continue;
                     }
-                } catch (Exception ex) {
-                    Respond(500, String.Format("Failed to process command: {0}", ex.Message));
-                }
-            }
 
-            logHandler.ClosedControlConnection(peerEndPoint);
+                    try {
+                        if (loggedIn)
+                            ProcessCommand(verb, args);
+                        else if (verb == "QUIT") { // QUIT should always be allowed
+                            Respond(221, "Bye.");
+                            commandSocket.Close();
+                        } else {
+                            HandleAuth(verb, args);
+                        }
+                    } catch (Exception ex) {
+                        Respond(500, String.Format("Failed to process command: {0}", ex.Message));
+                    }
+                }
+            } finally {
+                if (commandSocket.Connected)
+                    commandSocket.Close();
+
+                logHandler.ClosedControlConnection(peerEndPoint);
+            }
         }
 
         private void ProcessCommand(string verb, string arguments)
@@ -157,7 +171,7 @@ namespace mooftpserv.lib
                         break;
                     }
 
-                    IPAddress clientIP = ((IPEndPoint) commandSocket.Client.RemoteEndPoint).Address;
+                    IPAddress clientIP = ((IPEndPoint) commandSocket.RemoteEndPoint).Address;
                     if (!port.Address.Equals(clientIP)) {
                         Respond(500, "Specified IP differs from client IP");
                         break;
@@ -295,7 +309,7 @@ namespace mooftpserv.lib
 
             do {
                 int freeBytes = cmdRcvBuffer.Length - cmdRcvBytes;
-                int bytes = stream.Read(cmdRcvBuffer, cmdRcvBytes, freeBytes);
+                int bytes = commandSocket.Receive(cmdRcvBuffer, cmdRcvBytes, freeBytes, SocketFlags.None);
                 cmdRcvBytes += bytes;
 
                 // search \r\n
@@ -330,7 +344,7 @@ namespace mooftpserv.lib
             response += "\r\n";
 
             byte[] sendBuffer = EncodeString(response);
-            stream.Write(sendBuffer, 0, sendBuffer.Length);
+            commandSocket.Send(sendBuffer);
 
             logHandler.SentResponse(peerEndPoint, code, desc);
         }
@@ -508,7 +522,7 @@ namespace mooftpserv.lib
             dataSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
 
             if (listen) {
-                IPAddress serverIP = ((IPEndPoint) commandSocket.Client.LocalEndPoint).Address;
+                IPAddress serverIP = ((IPEndPoint) commandSocket.LocalEndPoint).Address;
                 dataSocket.Bind(new IPEndPoint(serverIP, 0));
                 dataSocket.Listen(1);
             }

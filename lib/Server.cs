@@ -41,8 +41,9 @@ namespace mooftpserv.lib
 
             while (true)
             {
-                TcpClient client = socket.AcceptTcpClient();
+                Socket client = socket.AcceptSocket();
                 Session session = new Session(client, authHandler.Clone(), fsHandler.Clone(), logHandler);
+                session.Start();
                 sessions.Add(session);
 
                 // purge old sessions
