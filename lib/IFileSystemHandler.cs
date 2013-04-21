@@ -74,6 +74,18 @@ namespace mooftpserv.lib
         Stream ReadFile(string path);
 
         /// <summary>
+        /// STOR: Open a stream for writing to the specified file.
+        /// If the file exists, it should be overwritten.
+        /// </summary>
+        /// <returns>
+        /// An opened stream for writing to the file, or null on error.
+        /// </returns>
+        /// <param name='path'>
+        /// A relative or absolute path for the file.
+        /// </param>
+        Stream WriteFile(string path);
+
+        /// <summary>
         /// LIST: Return a list of files and folders in the current directory, or the optionally specified path.
         /// </summary>
         /// <param name='path'>

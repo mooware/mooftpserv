@@ -87,13 +87,17 @@ namespace mooftpserv.lib
                 string verb = tokens[0].ToUpper(); // commands are case insensitive
                 string args = (tokens.Length > 1 ? tokens[1] : null);
 
-                if (loggedIn)
-                    ProcessCommand(verb, args);
-                else if (verb == "QUIT") { // QUIT should always be allowed
-                    Respond(221, "Bye.");
-                    commandSocket.Close();
-                } else {
-                    HandleAuth(verb, args);
+                try {
+                    if (loggedIn)
+                        ProcessCommand(verb, args);
+                    else if (verb == "QUIT") { // QUIT should always be allowed
+                        Respond(221, "Bye.");
+                        commandSocket.Close();
+                    } else {
+                        HandleAuth(verb, args);
+                    }
+                } catch (Exception ex) {
+                    Respond(500, String.Format("Failed to process command: {0}", ex.Message));
                 }
             }
         }
@@ -223,6 +227,17 @@ namespace mooftpserv.lib
                     }
 
                     SendData(stream);
+                    break;
+                }
+                case "STOR":
+                {
+                    Stream stream = fsHandler.WriteFile(arguments);
+                    if (stream == null) {
+                        Respond(550, "Could not open file for writing.");
+                        break;
+                    }
+
+                    ReceiveData(stream);
                     break;
                 }
                 case "MDTM":
@@ -393,40 +408,65 @@ namespace mooftpserv.lib
             return result;
         }
 
-        private void SendData(Stream stream) {
-            if (dataPort == null && !dataSocket.IsBound) {
-                Respond(425, "No data port configured, use PORT or PASV.");
-                return;
-            }
-
-            Respond(150, "Opening data connection.");
-
-            Socket socket;
-            if (dataPort != null) {
-                socket = dataSocket;
-                dataSocket.Connect(dataPort);
-            } else {
-                socket = dataSocket.Accept();
-                dataSocket.Close();
-            }
-
-            byte[] buffer = new byte[BUFFER_SIZE];
+        private void SendData(Stream stream)
+        {
             try {
-                while (true) {
-                    int bytes = stream.Read(buffer, 0, buffer.Length);
-                    if (bytes <= 0)
-                        break;
+                using (Socket socket = OpenDataConnection()) {
+                    if (socket == null)
+                        return;
 
-                    socket.Send(buffer, bytes, SocketFlags.None);
+                    byte[] buffer = new byte[BUFFER_SIZE];
+                    try {
+                        while (true) {
+                            int bytes = stream.Read(buffer, 0, buffer.Length);
+                            if (bytes <= 0)
+                                break;
+
+                            socket.Send(buffer, bytes, SocketFlags.None);
+                        }
+
+                        Respond(226, "Transfer complete.");
+                    } catch (Exception ex) {
+                        Respond(500, ex.Message);
+                        return;
+                    }
                 }
-            } catch (Exception ex) {
-                Respond(500, ex.Message);
-                socket.Close();
-                return;
+            } finally {
+                stream.Close();
             }
+        }
 
-            socket.Close();
-            Respond(226, "Transfer complete.");
+        private void ReceiveData(Stream stream)
+        {
+            try {
+                using (Socket socket = OpenDataConnection()) {
+                    if (socket == null)
+                        return;
+
+                    try {
+                        byte[] buffer = new byte[BUFFER_SIZE];
+                        while (true) {
+                            int bytes = socket.Receive(buffer);
+                            if (bytes < 0) {
+                                Respond(500, String.Format("Transfer failed: receive returned {0}", bytes));
+                                return;
+                            } else if (bytes == 0) {
+                                break;
+                            }
+
+
+                            stream.Write(buffer, 0, bytes);
+                        }
+
+                        Respond(226, "Transfer complete.");
+                    } catch (Exception ex) {
+                        Respond(500, ex.Message);
+                        return;
+                    }
+                }
+            } finally {
+                stream.Close();
+            }
         }
 
         private void CreateDataSocket(bool listen)
@@ -440,6 +480,32 @@ namespace mooftpserv.lib
                 IPAddress serverIP = ((IPEndPoint) commandSocket.Client.LocalEndPoint).Address;
                 dataSocket.Bind(new IPEndPoint(serverIP, 0));
                 dataSocket.Listen(1);
+            }
+        }
+
+        private Socket OpenDataConnection()
+        {
+            if (dataPort == null && !dataSocket.IsBound) {
+                Respond(425, "No data port configured, use PORT or PASV.");
+                return null;
+            }
+
+            Respond(150, "Opening data connection.");
+
+            try {
+                if (dataPort != null) {
+                    // active mode
+                    dataSocket.Connect(dataPort);
+                    return dataSocket;
+                } else {
+                    // passive mode
+                    Socket socket = dataSocket.Accept();
+                    dataSocket.Close();
+                    return socket;
+                }
+            } catch (Exception ex) {
+                Respond(500, String.Format("Failed to open data connection: {0}", ex.Message));
+                return null;
             }
         }
 

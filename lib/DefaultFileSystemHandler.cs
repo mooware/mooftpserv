@@ -84,6 +84,19 @@ namespace mooftpserv.lib
             return null;
         }
 
+        public Stream WriteFile(string path)
+        {
+            string newPath = ResolvePath(path);
+
+            try {
+                return File.Open(newPath, FileMode.OpenOrCreate);
+            } catch (Exception) {
+                // fall through
+            }
+
+            return null;
+        }
+
         public FileSystemEntry[] ListEntries(string path)
         {
             FileSystemInfo[] files = currentDir.GetFileSystemInfos();
