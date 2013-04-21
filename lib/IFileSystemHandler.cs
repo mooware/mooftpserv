@@ -11,7 +11,7 @@ namespace mooftpserv
         public string Name;
         public bool IsDirectory;
         public long Size;
-        public DateTime LastModifiedTime;
+        public DateTime LastModifiedTimeUtc;
     }
 
     /// <summary>

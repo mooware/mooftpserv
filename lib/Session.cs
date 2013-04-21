@@ -443,11 +443,11 @@ namespace mooftpserv
                 char dirflag = (entry.IsDirectory ? 'd' : '-');
                 string size = entry.Size.ToString().PadLeft(maxSizeChars);
                 string name = entry.Name.PadLeft(maxNameChars);
-                string modtime = MONTHS[entry.LastModifiedTime.Month - 1];
-                if (entry.LastModifiedTime < sixMonthsAgo)
-                    modtime += entry.LastModifiedTime.ToString(" dd  yyyy");
+                string modtime = MONTHS[entry.LastModifiedTimeUtc.Month - 1];
+                if (entry.LastModifiedTimeUtc < sixMonthsAgo)
+                    modtime += entry.LastModifiedTimeUtc.ToString(" dd  yyyy");
                 else
-                    modtime += entry.LastModifiedTime.ToString(" dd hh:mm");
+                    modtime += entry.LastModifiedTimeUtc.ToString(" dd hh:mm");
 
                 result += String.Format("{0}rwxr--r-- 1 owner group {1} {2} {3}\r\n",
                                         dirflag, size, modtime, name);

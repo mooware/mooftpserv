@@ -122,7 +122,7 @@ namespace mooftpserv
                 entry.Name = file.Name;
                 entry.IsDirectory = file.Attributes.HasFlag(FileAttributes.Directory);
                 entry.Size = (entry.IsDirectory ? 0 : ((FileInfo) file).Length);
-                entry.LastModifiedTime = file.LastWriteTime.ToUniversalTime();
+                entry.LastModifiedTimeUtc = file.LastWriteTime.ToUniversalTime();
                 result.Add(entry);
             }
 
