@@ -18,9 +18,9 @@ namespace mooftpserv.lib
         // response text for general ok messages
         private static string[] OK_TEXT = { "Sounds good.", "Barely acceptable.", "Alright, I'll do it..." };
         // Result for FEAT command
-        private static string[] FEATURES = { "MDTM", "SIZE", "UTF8" };
+        private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "UTF8" };
 
-        private TcpClient socket;
+        private TcpClient commandSocket;
         private IAuthHandler authHandler;
         private IFileSystemHandler fsHandler;
         private Thread thread;
@@ -33,12 +33,12 @@ namespace mooftpserv.lib
         private string loggedInUser = null;
 
         // remote data port. null when PASV is used.
-        private IPEndPoint dataPort;
-        private Socket dataSocket;
+        private IPEndPoint dataPort = null;
+        private Socket dataSocket = null;
 
         public Session(TcpClient socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler)
         {
-            this.socket = socket;
+            this.commandSocket = socket;
             this.authHandler = authHandler;
             this.fsHandler = fileSystemHandler;
             this.stream = socket.GetStream();
@@ -58,7 +58,7 @@ namespace mooftpserv.lib
         public void Close()
         {
             thread.Abort();
-            socket.Close();
+            commandSocket.Close();
         }
 
         private void Work()
@@ -70,7 +70,7 @@ namespace mooftpserv.lib
                 loggedIn = true;
             }
 
-            while (socket.Connected) {
+            while (commandSocket.Connected) {
                 string command = ReadCommand();
 
                 if (command == null) {
@@ -89,7 +89,7 @@ namespace mooftpserv.lib
                     ProcessCommand(verb, args);
                 else if (verb == "QUIT") { // QUIT should always be allowed
                     Respond(221, "Bye.");
-                    socket.Close();
+                    commandSocket.Close();
                 } else {
                     HandleAuth(verb, args);
                 }
@@ -107,7 +107,7 @@ namespace mooftpserv.lib
                 case "QUIT":
                 {
                     Respond(221, "Bye.");
-                    socket.Close();
+                    commandSocket.Close();
                     break;
                 }
                 case "FEAT":
@@ -145,14 +145,30 @@ namespace mooftpserv.lib
                         break;
                     }
 
-                    IPAddress clientIP = ((IPEndPoint) socket.Client.RemoteEndPoint).Address;
+                    IPAddress clientIP = ((IPEndPoint) commandSocket.Client.RemoteEndPoint).Address;
                     if (!port.Address.Equals(clientIP)) {
                         Respond(500, "Specified IP differs from client IP");
                         break;
                     }
 
                     dataPort = port;
+                    CreateDataSocket(false);
                     Respond(200, getRandomText(OK_TEXT));
+                    break;
+                }
+                case "PASV":
+                {
+                    dataPort = null;
+
+                    try {
+                        CreateDataSocket(true);
+                    } catch (Exception ex) {
+                        Respond(500, ex.Message);
+                        break;
+                    }
+
+                    string port = FormatAddress((IPEndPoint) dataSocket.LocalEndPoint);
+                    Respond(200, String.Format("Switched to passive mode ({0})", port));
                     break;
                 }
                 case "PWD":
@@ -329,7 +345,7 @@ namespace mooftpserv.lib
 
             return String.Format("{0},{1},{2},{3},{4},{5}",
                                  ip[0], ip[1], ip[2], ip[3],
-                                 port & 0xFF00, port & 0x00FF);
+                                 (port & 0xFF00) >> 8, port & 0x00FF);
         }
 
         private string FormatTime(DateTime time)
@@ -367,26 +383,47 @@ namespace mooftpserv.lib
         }
 
         private void SendData(string data, uint beforeCode, string beforeDesc, uint afterCode, string afterDesc) {
-            if (dataPort == null && dataSocket == null) {
+            if (dataPort == null && !dataSocket.IsBound) {
                 Respond(425, "No data port configured, use PORT or PASV.");
                 return;
             }
 
+            Socket socket;
             if (dataPort != null) {
-                dataSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+                socket = dataSocket;
                 dataSocket.Connect(dataPort);
             } else {
-                throw new NotImplementedException();
+                socket = dataSocket.Accept();
+                dataSocket.Close();
             }
 
             Respond(beforeCode, beforeDesc);
 
             byte[] buf = Encoding.UTF8.GetBytes(data);
-            dataSocket.Send(buf);
-            dataSocket.Close();
-            dataSocket = null;
+            try {
+                socket.Send(buf);
+                socket.Close();
+            } catch (Exception ex) {
+                Respond(500, ex.Message);
+                return;
+            }
 
             Respond(afterCode, afterDesc);
+        }
+
+        private void CreateDataSocket(bool listen)
+        {
+            if (dataSocket != null)
+                dataSocket.Close();
+
+            dataSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+
+            if (listen) {
+                IPAddress serverIP = ((IPEndPoint) commandSocket.Client.LocalEndPoint).Address;
+                dataSocket.Bind(new IPEndPoint(serverIP, 0));
+                dataSocket.Listen(1);
+            }
+
         }
 
         private string getRandomText(string[] texts)
