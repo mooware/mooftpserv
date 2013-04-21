@@ -9,6 +9,8 @@ namespace mooftpserv.lib
 {
     public class Session
     {
+        // size of stream buffers
+        private static int BUFFER_SIZE = 4096;
         // version from AssemblyInfo
         private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
         // monthnames for LIST command, since DateTime returns localized names
@@ -42,7 +44,7 @@ namespace mooftpserv.lib
             this.authHandler = authHandler;
             this.fsHandler = fileSystemHandler;
             this.stream = socket.GetStream();
-            this.recvBuffer = new byte[10240];
+            this.recvBuffer = new byte[BUFFER_SIZE];
             this.recvBytes = 0;
             this.randomTextIndex = new Random();
 
@@ -63,7 +65,7 @@ namespace mooftpserv.lib
 
         private void Work()
         {
-            Respond(220, String.Format("This is mooftpserv v{0}. {1}", LIB_VERSION, getRandomText(HELLO_TEXT)));
+            Respond(220, String.Format("This is mooftpserv v{0}. {1}", LIB_VERSION, GetRandomText(HELLO_TEXT)));
 
             // allow anonymous login?
             if (authHandler.AllowLogin(null, null)) {
@@ -153,7 +155,7 @@ namespace mooftpserv.lib
 
                     dataPort = port;
                     CreateDataSocket(false);
-                    Respond(200, getRandomText(OK_TEXT));
+                    Respond(200, GetRandomText(OK_TEXT));
                     break;
                 }
                 case "PASV":
@@ -180,7 +182,7 @@ namespace mooftpserv.lib
                 {
                     string ret = fsHandler.ChangeCurrentDirectory(arguments);
                     if (ret == null)
-                        Respond(250, getRandomText(OK_TEXT));
+                        Respond(250, GetRandomText(OK_TEXT));
                     else
                         Respond(550, ret);
                     break;
@@ -189,7 +191,7 @@ namespace mooftpserv.lib
                 {
                     string ret = fsHandler.ChangeCurrentDirectory("..");
                     if (ret == null)
-                        Respond(250, getRandomText(OK_TEXT));
+                        Respond(250, GetRandomText(OK_TEXT));
                     else
                         Respond(550, ret);
                     break;
@@ -198,7 +200,7 @@ namespace mooftpserv.lib
                 {
                     string ret = fsHandler.CreateDirectory(arguments);
                     if (ret == null)
-                        Respond(250, getRandomText(OK_TEXT));
+                        Respond(250, GetRandomText(OK_TEXT));
                     else
                         Respond(550, ret);
                     break;
@@ -207,7 +209,7 @@ namespace mooftpserv.lib
                 {
                     string ret = fsHandler.RemoveDirectory(arguments);
                     if (ret == null)
-                        Respond(250, getRandomText(OK_TEXT));
+                        Respond(250, GetRandomText(OK_TEXT));
                     else
                         Respond(550, ret);
                     break;
@@ -442,7 +444,7 @@ namespace mooftpserv.lib
 
         }
 
-        private string getRandomText(string[] texts)
+        private string GetRandomText(string[] texts)
         {
             int index = randomTextIndex.Next(0, texts.Length);
             return texts[index];
