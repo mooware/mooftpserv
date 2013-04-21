@@ -398,11 +398,6 @@ namespace mooftpserv.lib
             }
         }
 
-        private string EscapePath(string path)
-        {
-            return '"' + path.Replace("\"", "\\\"") + '"';
-        }
-
         private IPEndPoint ParseAddress(string address)
         {
             string[] tokens = address.Split(',');
@@ -575,6 +570,11 @@ namespace mooftpserv.lib
                 Respond(500, String.Format("Failed to open data connection: {0}", ex.Message));
                 return null;
             }
+        }
+
+        private string EscapePath(string path)
+        {
+            return '"' + path.Replace("\"", "\"\"") + '"';
         }
 
         private byte[] EncodeString(string data)
