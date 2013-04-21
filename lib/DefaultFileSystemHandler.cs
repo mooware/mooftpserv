@@ -69,6 +69,21 @@ namespace mooftpserv.lib
             return null;
         }
 
+        public Stream ReadFile(string path)
+        {
+            string newPath = ResolvePath(path);
+            if (!File.Exists(newPath))
+                return null;
+
+            try {
+                return File.OpenRead(newPath);
+            } catch (Exception) {
+                // fall through
+            }
+
+            return null;
+        }
+
         public FileSystemEntry[] ListEntries(string path)
         {
             FileSystemInfo[] files = currentDir.GetFileSystemInfos();

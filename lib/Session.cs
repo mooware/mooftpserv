@@ -214,6 +214,17 @@ namespace mooftpserv.lib
                         Respond(550, ret);
                     break;
                 }
+                case "RETR":
+                {
+                    Stream stream = fsHandler.ReadFile(arguments);
+                    if (stream == null) {
+                        Respond(550, "Could not retrieve file.");
+                        break;
+                    }
+
+                    SendData(stream);
+                    break;
+                }
                 case "MDTM":
                 {
                     DateTime? time = fsHandler.GetLastModifiedTime(arguments);
@@ -236,13 +247,11 @@ namespace mooftpserv.lib
                 {
                     FileSystemEntry[] list = fsHandler.ListEntries(arguments);
                     if (list == null) {
-                        Respond(500, "Failed to get directory listing.");
+                        Respond(500, "Could not get directory listing.");
                         break;
                     }
 
-                    SendData(FormatDirList(list),
-                             150, "Sending directory listing.",
-                             226, "Directory listing done.");
+                    SendData(MakeStream(FormatDirList(list)));
                     break;
                 }
                 default:
@@ -384,11 +393,13 @@ namespace mooftpserv.lib
             return result;
         }
 
-        private void SendData(string data, uint beforeCode, string beforeDesc, uint afterCode, string afterDesc) {
+        private void SendData(Stream stream) {
             if (dataPort == null && !dataSocket.IsBound) {
                 Respond(425, "No data port configured, use PORT or PASV.");
                 return;
             }
+
+            Respond(150, "Opening data connection.");
 
             Socket socket;
             if (dataPort != null) {
@@ -399,18 +410,23 @@ namespace mooftpserv.lib
                 dataSocket.Close();
             }
 
-            Respond(beforeCode, beforeDesc);
-
-            byte[] buf = EncodeString(data);
+            byte[] buffer = new byte[BUFFER_SIZE];
             try {
-                socket.Send(buf);
-                socket.Close();
+                while (true) {
+                    int bytes = stream.Read(buffer, 0, buffer.Length);
+                    if (bytes <= 0)
+                        break;
+
+                    socket.Send(buffer, bytes, SocketFlags.None);
+                }
             } catch (Exception ex) {
                 Respond(500, ex.Message);
+                socket.Close();
                 return;
             }
 
-            Respond(afterCode, afterDesc);
+            socket.Close();
+            Respond(226, "Transfer complete.");
         }
 
         private void CreateDataSocket(bool listen)
@@ -442,6 +458,9 @@ namespace mooftpserv.lib
             return DecodeString(data, data.Length);
         }
 
+        private Stream MakeStream(string data)
+        {
+            return new MemoryStream(EncodeString(data));
         }
 
         private string GetRandomText(string[] texts)

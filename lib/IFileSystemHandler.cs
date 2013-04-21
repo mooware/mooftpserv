@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 namespace mooftpserv.lib
 {
@@ -19,7 +20,7 @@ namespace mooftpserv.lib
     public interface IFileSystemHandler
     {
         /// <summary>
-        /// Clone this instance.
+        /// Clone this instance. Each FTP session uses a separate, cloned instance.
         /// </summary>
         IFileSystemHandler Clone();
 
@@ -60,6 +61,17 @@ namespace mooftpserv.lib
         /// A relative or absolute path for the directory.
         /// </param>
         string RemoveDirectory(string path);
+
+        /// <summary>
+        /// RETR: Open a stream for reading the specified file.
+        /// </summary>
+        /// <returns>
+        /// An opened stream for reading from the file, or null on error.
+        /// </returns>
+        /// <param name='path'>
+        /// A relative or absolute path for the file.
+        /// </param>
+        Stream ReadFile(string path);
 
         /// <summary>
         /// LIST: Return a list of files and folders in the current directory, or the optionally specified path.

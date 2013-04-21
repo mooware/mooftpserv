@@ -5,7 +5,7 @@ namespace mooftpserv.lib
     public interface IAuthHandler
     {
         /// <summary>
-        /// Clone this instance.
+        /// Clone this instance. Each FTP session uses a separate, cloned instance.
         /// </summary>
         IAuthHandler Clone();
 
