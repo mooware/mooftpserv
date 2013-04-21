@@ -13,6 +13,7 @@ namespace mooftpserv.lib
         private TcpListener socket;
         private IAuthHandler authHandler;
         private IFileSystemHandler fsHandler;
+        private ILogHandler logHandler;
         private List<Session> sessions;
 
         public Server(string host, int port)
@@ -30,6 +31,9 @@ namespace mooftpserv.lib
             if (fsHandler == null)
                 fsHandler = new DefaultFileSystemHandler(new DirectoryInfo(Directory.GetCurrentDirectory()));
 
+            if (logHandler == null)
+                logHandler = new DefaultLogHandler(true);
+
             if (socket == null)
                 socket = new TcpListener(host, port);
 
@@ -38,7 +42,7 @@ namespace mooftpserv.lib
             while (true)
             {
                 TcpClient client = socket.AcceptTcpClient();
-                Session session = new Session(client, authHandler.Clone(), fsHandler.Clone());
+                Session session = new Session(client, authHandler.Clone(), fsHandler.Clone(), logHandler);
                 sessions.Add(session);
 
                 // purge old sessions

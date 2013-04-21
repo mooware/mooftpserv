@@ -39,6 +39,8 @@
     <Compile Include="DefaultFileSystemHandler.cs" />
     <Compile Include="IAuthHandler.cs" />
     <Compile Include="DefaultAuthHandler.cs" />
+    <Compile Include="ILogHandler.cs" />
+    <Compile Include="DefaultLogHandler.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -25,10 +25,12 @@ namespace mooftpserv.lib
         private TcpClient commandSocket;
         private IAuthHandler authHandler;
         private IFileSystemHandler fsHandler;
+        private ILogHandler logHandler;
         private Thread thread;
         private NetworkStream stream;
-        private byte[] recvBuffer;
-        private int recvBytes;
+        private IPEndPoint peerEndPoint;
+        private byte[] cmdRcvBuffer;
+        private int cmdRcvBytes;
 
         private Random randomTextIndex;
         private bool loggedIn = false;
@@ -38,14 +40,16 @@ namespace mooftpserv.lib
         private IPEndPoint dataPort = null;
         private Socket dataSocket = null;
 
-        public Session(TcpClient socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler)
+        public Session(TcpClient socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
         {
             this.commandSocket = socket;
             this.authHandler = authHandler;
             this.fsHandler = fileSystemHandler;
+            this.logHandler = logHandler;
             this.stream = socket.GetStream();
-            this.recvBuffer = new byte[BUFFER_SIZE];
-            this.recvBytes = 0;
+            this.peerEndPoint = (IPEndPoint) socket.Client.RemoteEndPoint;
+            this.cmdRcvBuffer = new byte[BUFFER_SIZE];
+            this.cmdRcvBytes = 0;
             this.randomTextIndex = new Random();
 
             this.thread = new Thread(new ThreadStart(this.Work));
@@ -65,6 +69,7 @@ namespace mooftpserv.lib
 
         private void Work()
         {
+            logHandler.NewControlConnection(peerEndPoint);
             Respond(220, String.Format("This is mooftpserv v{0}. {1}", LIB_VERSION, GetRandomText(HELLO_TEXT)));
 
             // allow anonymous login?
@@ -73,19 +78,18 @@ namespace mooftpserv.lib
             }
 
             while (commandSocket.Connected) {
-                string command = ReadCommand();
-
-                if (command == null) {
-                    Respond(500, "Failed to read command, closing connection.");
+                string verb;
+                string args;
+                if (!ReadCommand(out verb, out args)) {
+                    if (commandSocket.Connected) {
+                        Respond(500, "Failed to read command, closing connection.");
+                        commandSocket.Close();
+                    }
                     break;
-                } else if (command.Trim() == "") {
+                } else if (verb.Trim() == "") {
                     // ignore empty lines
                     continue;
                 }
-
-                string[] tokens = command.Split(new char[] { ' ' }, 2);
-                string verb = tokens[0].ToUpper(); // commands are case insensitive
-                string args = (tokens.Length > 1 ? tokens[1] : null);
 
                 try {
                     if (loggedIn)
@@ -100,6 +104,8 @@ namespace mooftpserv.lib
                     Respond(500, String.Format("Failed to process command: {0}", ex.Message));
                 }
             }
+
+            logHandler.ClosedControlConnection(peerEndPoint);
         }
 
         private void ProcessCommand(string verb, string arguments)
@@ -277,34 +283,43 @@ namespace mooftpserv.lib
             }
         }
 
-        private string ReadCommand()
+        private bool ReadCommand(out string verb, out string args)
         {
+            verb = null;
+            args = null;
+
             int endPos = -1;
             // can there already be a command in the buffer?
-            if (recvBytes > 0)
-                Array.IndexOf(recvBuffer, (byte)'\n', 0, recvBytes);
+            if (cmdRcvBytes > 0)
+                Array.IndexOf(cmdRcvBuffer, (byte)'\n', 0, cmdRcvBytes);
 
             do {
-                int freeBytes = recvBuffer.Length - recvBytes;
-                int bytes = stream.Read(recvBuffer, recvBytes, freeBytes);
-                recvBytes += bytes;
+                int freeBytes = cmdRcvBuffer.Length - cmdRcvBytes;
+                int bytes = stream.Read(cmdRcvBuffer, cmdRcvBytes, freeBytes);
+                cmdRcvBytes += bytes;
 
                 // search \r\n
-                endPos = Array.IndexOf(recvBuffer, (byte)'\r', 0, recvBytes);
-                if (endPos != -1 && (recvBytes <= endPos + 1 || recvBuffer[endPos + 1] != (byte)'\n'))
+                endPos = Array.IndexOf(cmdRcvBuffer, (byte)'\r', 0, cmdRcvBytes);
+                if (endPos != -1 && (cmdRcvBytes <= endPos + 1 || cmdRcvBuffer[endPos + 1] != (byte)'\n'))
                     endPos = -1;
-            } while (endPos == -1 && recvBytes < recvBuffer.Length);
+            } while (endPos == -1 && cmdRcvBytes < cmdRcvBuffer.Length);
 
             if (endPos == -1)
-                return null;
+                return false;
 
-            string result = DecodeString(recvBuffer, endPos);
+            string command = DecodeString(cmdRcvBuffer, endPos);
 
             // remove the command from the buffer
-            recvBytes -= (endPos + 2);
-            Array.Copy(recvBuffer, endPos + 2, recvBuffer, 0, recvBytes);
+            cmdRcvBytes -= (endPos + 2);
+            Array.Copy(cmdRcvBuffer, endPos + 2, cmdRcvBuffer, 0, cmdRcvBytes);
 
-            return result;
+            string[] tokens = command.Split(new char[] { ' ' }, 2);
+            verb = tokens[0].ToUpper(); // commands are case insensitive
+            args = (tokens.Length > 1 ? tokens[1] : null);
+
+            logHandler.ReceivedCommand(peerEndPoint, verb, args);
+
+            return true;
         }
 
         private void Respond(uint code, string desc = null, bool moreFollows = false)
@@ -316,6 +331,8 @@ namespace mooftpserv.lib
 
             byte[] sendBuffer = EncodeString(response);
             stream.Write(sendBuffer, 0, sendBuffer.Length);
+
+            logHandler.SentResponse(peerEndPoint, code, desc);
         }
 
         private void HandleAuth(string verb, string args)
@@ -415,6 +432,11 @@ namespace mooftpserv.lib
                     if (socket == null)
                         return;
 
+                    IPEndPoint remote = (IPEndPoint) socket.RemoteEndPoint;
+                    IPEndPoint local = (IPEndPoint) socket.LocalEndPoint;
+                    bool passive = (dataPort == null);
+                    logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
+
                     byte[] buffer = new byte[BUFFER_SIZE];
                     try {
                         while (true) {
@@ -429,6 +451,8 @@ namespace mooftpserv.lib
                     } catch (Exception ex) {
                         Respond(500, ex.Message);
                         return;
+                    } finally {
+                        logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
                     }
                 }
             } finally {
@@ -442,6 +466,11 @@ namespace mooftpserv.lib
                 using (Socket socket = OpenDataConnection()) {
                     if (socket == null)
                         return;
+
+                    IPEndPoint remote = (IPEndPoint) socket.RemoteEndPoint;
+                    IPEndPoint local = (IPEndPoint) socket.LocalEndPoint;
+                    bool passive = (dataPort == null);
+                    logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
                     try {
                         byte[] buffer = new byte[BUFFER_SIZE];
@@ -462,6 +491,8 @@ namespace mooftpserv.lib
                     } catch (Exception ex) {
                         Respond(500, ex.Message);
                         return;
+                    } finally {
+                        logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
                     }
                 }
             } finally {
@@ -496,6 +527,7 @@ namespace mooftpserv.lib
                 if (dataPort != null) {
                     // active mode
                     dataSocket.Connect(dataPort);
+                    dataPort = null;
                     return dataSocket;
                 } else {
                     // passive mode
