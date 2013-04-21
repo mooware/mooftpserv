@@ -18,7 +18,7 @@ namespace mooftpserv.lib
         // response text for general ok messages
         private static string[] OK_TEXT = { "Sounds good.", "Barely acceptable.", "Alright, I'll do it..." };
         // Result for FEAT command
-        private static string[] FEATURES = { "MDTM", "SIZE" };
+        private static string[] FEATURES = { "MDTM", "SIZE", "UTF8" };
 
         private TcpClient socket;
         private IAuthHandler authHandler;
@@ -114,6 +114,14 @@ namespace mooftpserv.lib
                 {
                     Respond(211, "Features:\r\n " + String.Join("\r\n ", FEATURES), true);
                     Respond(211, "Features done.");
+                    break;
+                }
+                case "OPTS":
+                {
+                    if (arguments == "UTF8 ON")
+                        Respond(200, "Always in UTF8 mode.");
+                    else
+                        Respond(501, "Unknown option.");
                     break;
                 }
                 case "TYPE":
@@ -248,7 +256,7 @@ namespace mooftpserv.lib
             if (endPos == -1)
                 return null;
 
-            string result = Encoding.ASCII.GetString(recvBuffer, 0, endPos);
+            string result = Encoding.UTF8.GetString(recvBuffer, 0, endPos);
 
             // remove the command from the buffer
             recvBytes -= (endPos + 2);
@@ -264,7 +272,7 @@ namespace mooftpserv.lib
                 response += (moreFollows ? '-' : ' ') + desc;
             response += "\r\n";
 
-            byte[] sendBuffer = Encoding.ASCII.GetBytes(response);
+            byte[] sendBuffer = Encoding.UTF8.GetBytes(response);
             stream.Write(sendBuffer, 0, sendBuffer.Length);
         }
 
@@ -373,7 +381,7 @@ namespace mooftpserv.lib
 
             Respond(beforeCode, beforeDesc);
 
-            byte[] buf = Encoding.ASCII.GetBytes(data);
+            byte[] buf = Encoding.UTF8.GetBytes(data);
             dataSocket.Send(buf);
             dataSocket.Close();
             dataSocket = null;
