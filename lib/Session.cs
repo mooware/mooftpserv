@@ -22,7 +22,7 @@ namespace mooftpserv.lib
         // Result for FEAT command
         private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "UTF8" };
 
-        private Socket commandSocket;
+        private Socket controlSocket;
         private IAuthHandler authHandler;
         private IFileSystemHandler fsHandler;
         private ILogHandler logHandler;
@@ -41,7 +41,7 @@ namespace mooftpserv.lib
 
         public Session(Socket socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
         {
-            this.commandSocket = socket;
+            this.controlSocket = socket;
             this.authHandler = authHandler;
             this.fsHandler = fileSystemHandler;
             this.logHandler = logHandler;
@@ -69,8 +69,8 @@ namespace mooftpserv.lib
             if (thread.IsAlive)
                 thread.Abort();
 
-            if (commandSocket.Connected)
-                commandSocket.Close();
+            if (controlSocket.Connected)
+                controlSocket.Close();
 
             if (dataSocket != null && dataSocket.Connected)
                 dataSocket.Close();
@@ -87,13 +87,13 @@ namespace mooftpserv.lib
                     loggedIn = true;
                 }
 
-                while (commandSocket.Connected) {
+                while (controlSocket.Connected) {
                     string verb;
                     string args;
                     if (!ReadCommand(out verb, out args)) {
-                        if (commandSocket.Connected) {
+                        if (controlSocket.Connected) {
                             Respond(500, "Failed to read command, closing connection.");
-                            commandSocket.Close();
+                            controlSocket.Close();
                         }
                         break;
                     } else if (verb.Trim() == "") {
@@ -106,7 +106,7 @@ namespace mooftpserv.lib
                             ProcessCommand(verb, args);
                         else if (verb == "QUIT") { // QUIT should always be allowed
                             Respond(221, "Bye.");
-                            commandSocket.Close();
+                            controlSocket.Close();
                         } else {
                             HandleAuth(verb, args);
                         }
@@ -115,8 +115,8 @@ namespace mooftpserv.lib
                     }
                 }
             } finally {
-                if (commandSocket.Connected)
-                    commandSocket.Close();
+                if (controlSocket.Connected)
+                    controlSocket.Close();
 
                 logHandler.ClosedControlConnection(peerEndPoint);
             }
@@ -133,7 +133,7 @@ namespace mooftpserv.lib
                 case "QUIT":
                 {
                     Respond(221, "Bye.");
-                    commandSocket.Close();
+                    controlSocket.Close();
                     break;
                 }
                 case "FEAT":
@@ -171,7 +171,7 @@ namespace mooftpserv.lib
                         break;
                     }
 
-                    IPAddress clientIP = ((IPEndPoint) commandSocket.RemoteEndPoint).Address;
+                    IPAddress clientIP = ((IPEndPoint) controlSocket.RemoteEndPoint).Address;
                     if (!port.Address.Equals(clientIP)) {
                         Respond(500, "Specified IP differs from client IP");
                         break;
@@ -309,7 +309,7 @@ namespace mooftpserv.lib
 
             do {
                 int freeBytes = cmdRcvBuffer.Length - cmdRcvBytes;
-                int bytes = commandSocket.Receive(cmdRcvBuffer, cmdRcvBytes, freeBytes, SocketFlags.None);
+                int bytes = controlSocket.Receive(cmdRcvBuffer, cmdRcvBytes, freeBytes, SocketFlags.None);
                 cmdRcvBytes += bytes;
 
                 // search \r\n
@@ -344,7 +344,7 @@ namespace mooftpserv.lib
             response += "\r\n";
 
             byte[] sendBuffer = EncodeString(response);
-            commandSocket.Send(sendBuffer);
+            controlSocket.Send(sendBuffer);
 
             logHandler.SentResponse(peerEndPoint, code, desc);
         }
@@ -522,7 +522,7 @@ namespace mooftpserv.lib
             dataSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
 
             if (listen) {
-                IPAddress serverIP = ((IPEndPoint) commandSocket.LocalEndPoint).Address;
+                IPAddress serverIP = ((IPEndPoint) controlSocket.LocalEndPoint).Address;
                 dataSocket.Bind(new IPEndPoint(serverIP, 0));
                 dataSocket.Listen(1);
             }
