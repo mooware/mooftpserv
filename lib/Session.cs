@@ -209,103 +209,107 @@ namespace mooftpserv
                 }
                 case "PWD":
                 {
-                    Respond(257, EscapePath(fsHandler.GetCurrentDirectory()));
+                    ResultOrError<string> ret = fsHandler.GetCurrentDirectory();
+                    if (ret.HasError)
+                        Respond(500, ret.Error);
+                    else
+                        Respond(257, EscapePath(ret.Result));
                     break;
                 }
                 case "CWD":
                 {
-                    string ret = fsHandler.ChangeCurrentDirectory(arguments);
-                    if (ret == null)
-                        Respond(250, GetRandomText(OK_TEXT));
+                    ResultOrError<string> ret = fsHandler.ChangeDirectory(arguments);
+                    if (ret.HasError)
+                        Respond(550, ret.Error);
                     else
-                        Respond(550, ret);
+                        Respond(200, GetRandomText(OK_TEXT));
                     break;
                 }
                 case "CDUP":
                 {
-                    string ret = fsHandler.ChangeCurrentDirectory("..");
-                    if (ret == null)
-                        Respond(250, GetRandomText(OK_TEXT));
+                    ResultOrError<string> ret = fsHandler.ChangeToParentDirectory();
+                    if (ret.HasError)
+                        Respond(550, ret.Error);
                     else
-                        Respond(550, ret);
+                        Respond(200, GetRandomText(OK_TEXT));
                     break;
                 }
                 case "MKD":
                 {
-                    string ret = fsHandler.CreateDirectory(arguments);
-                    if (ret == null)
-                        Respond(250, GetRandomText(OK_TEXT));
+                    ResultOrError<string> ret = fsHandler.CreateDirectory(arguments);
+                    if (ret.HasError)
+                        Respond(550, ret.Error);
                     else
-                        Respond(550, ret);
+                        Respond(257, EscapePath(ret.Result));
                     break;
                 }
                 case "RMD":
                 {
-                    string ret = fsHandler.RemoveDirectory(arguments);
-                    if (ret == null)
-                        Respond(250, GetRandomText(OK_TEXT));
+                    ResultOrError<bool> ret = fsHandler.RemoveDirectory(arguments);
+                    if (ret.HasError)
+                        Respond(550, ret.Error);
                     else
-                        Respond(550, ret);
+                        Respond(250, GetRandomText(OK_TEXT));
                     break;
                 }
                 case "RETR":
                 {
-                    Stream stream = fsHandler.ReadFile(arguments);
-                    if (stream == null) {
-                        Respond(550, "Could not retrieve file.");
+                    ResultOrError<Stream> ret = fsHandler.ReadFile(arguments);
+                    if (ret.HasError) {
+                        Respond(550, ret.Error);
                         break;
                     }
 
-                    SendData(stream);
+                    SendData(ret.Result);
                     break;
                 }
                 case "STOR":
                 {
-                    Stream stream = fsHandler.WriteFile(arguments);
-                    if (stream == null) {
-                        Respond(550, "Could not open file for writing.");
+                    ResultOrError<Stream> ret = fsHandler.WriteFile(arguments);
+                    if (ret.HasError) {
+                        Respond(550, ret.Error);
                         break;
                     }
 
-                    ReceiveData(stream);
+                    ReceiveData(ret.Result);
                     break;
                 }
                 case "DELE":
                 {
-                    string ret = fsHandler.RemoveFile(arguments);
-                    if (ret == null)
-                        Respond(250, GetRandomText(OK_TEXT));
+                    ResultOrError<bool> ret = fsHandler.RemoveFile(arguments);
+                    if (ret.HasError)
+                        Respond(550, ret.Error);
                     else
-                        Respond(550, ret);
+                        Respond(250, GetRandomText(OK_TEXT));
                     break;
                 }
                 case "MDTM":
                 {
-                    DateTime? time = fsHandler.GetLastModifiedTime(arguments);
-                    if (time != null)
-                        Respond(213, FormatTime(time.Value));
+                    ResultOrError<DateTime> ret = fsHandler.GetLastModifiedTimeUtc(arguments);
+                    if (ret.HasError)
+                        Respond(550, ret.Error);
                     else
-                        Respond(550, "Could not get file modification time.");
+                        Respond(213, FormatTime(ret.Result));
                     break;
                 }
                 case "SIZE":
                 {
-                    long size = fsHandler.GetFileSize(arguments);
-                    if (size > -1)
-                        Respond(213, size.ToString());
+                    ResultOrError<long> ret = fsHandler.GetFileSize(arguments);
+                    if (ret.HasError)
+                        Respond(550, ret.Error);
                     else
-                        Respond(550, "Could not get file size.");
+                        Respond(213, ret.Result.ToString());
                     break;
                 }
                 case "LIST":
                 {
-                    FileSystemEntry[] list = fsHandler.ListEntries(arguments);
-                    if (list == null) {
-                        Respond(500, "Could not get directory listing.");
+                    ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries(arguments);
+                    if (ret.HasError) {
+                        Respond(500, ret.Error);
                         break;
                     }
 
-                    SendData(MakeStream(FormatDirList(list)));
+                    SendData(MakeStream(FormatDirList(ret.Result)));
                     break;
                 }
                 default:

@@ -18,101 +18,102 @@ namespace mooftpserv
             return new DefaultFileSystemHandler(currentDir);
         }
 
-        public string GetCurrentDirectory()
+        public ResultOrError<string> GetCurrentDirectory()
         {
-            return currentDir.FullName;
+            return ResultOrError<string>.MakeResult(currentDir.FullName);
         }
 
-        public string ChangeCurrentDirectory(string path)
+        public ResultOrError<string> ChangeDirectory(string path)
         {
             string newPath = ResolvePath(path);
             DirectoryInfo newDir = new DirectoryInfo(newPath);
             if (!newDir.Exists)
-                return "Path does not exist.";
+                return ResultOrError<string>.MakeError("Path does not exist.");
 
             currentDir = newDir;
-            return null;
+            return ResultOrError<string>.MakeResult(newPath);
         }
 
-        public string CreateDirectory(string path)
+        public ResultOrError<string> ChangeToParentDirectory()
+        {
+            return ChangeDirectory("..");
+        }
+
+        public ResultOrError<string> CreateDirectory(string path)
         {
             string newPath = ResolvePath(path);
             DirectoryInfo newDir = new DirectoryInfo(newPath);
             if (newDir.Exists)
-                return "Directory already exists.";
+                return ResultOrError<string>.MakeError("Directory already exists.");
 
             try {
                 newDir.Create();
             } catch (Exception ex) {
-                return ex.Message;
+                return ResultOrError<string>.MakeError(ex.Message);
             }
 
-            return null;
+            return ResultOrError<string>.MakeResult(newPath);
         }
 
-        public string RemoveDirectory(string path)
+        public ResultOrError<bool> RemoveDirectory(string path)
         {
             string newPath = ResolvePath(path);
             DirectoryInfo newDir = new DirectoryInfo(newPath);
             if (!newDir.Exists)
-                return "Directory does not exist.";
+                return ResultOrError<bool>.MakeError("Directory does not exist.");
 
             if (newDir.GetFileSystemInfos().Length > 0)
-                return "Directory is not empty.";
+                return ResultOrError<bool>.MakeError("Directory is not empty.");
 
             try {
                 newDir.Delete();
             } catch (Exception ex) {
-                return ex.Message;
+                return ResultOrError<bool>.MakeError(ex.Message);
             }
 
-            return null;
+            return ResultOrError<bool>.MakeResult(true);
         }
 
-        public Stream ReadFile(string path)
+        public ResultOrError<Stream> ReadFile(string path)
         {
             string newPath = ResolvePath(path);
             if (!File.Exists(newPath))
-                return null;
+                return ResultOrError<Stream>.MakeError("File does not exist.");
 
             try {
-                return File.OpenRead(newPath);
-            } catch (Exception) {
-                // fall through
+                return ResultOrError<Stream>.MakeResult(File.OpenRead(newPath));
+            } catch (Exception ex) {
+                return ResultOrError<Stream>.MakeError(ex.Message);
             }
-
-            return null;
         }
 
-        public Stream WriteFile(string path)
+        public ResultOrError<Stream> WriteFile(string path)
         {
             string newPath = ResolvePath(path);
 
             try {
-                return File.Open(newPath, FileMode.OpenOrCreate);
-            } catch (Exception) {
-                // fall through
+                return ResultOrError<Stream>.MakeResult(File.Open(newPath, FileMode.OpenOrCreate));
+            } catch (Exception ex) {
+                return ResultOrError<Stream>.MakeError(ex.Message);
             }
-
-            return null;
         }
 
-        public string RemoveFile(string path)
+        public ResultOrError<bool> RemoveFile(string path)
         {
             string newPath = ResolvePath(path);
             if (!File.Exists(newPath))
-                return null;
+                return ResultOrError<bool>.MakeError("File does not exist.");
 
             try {
                 File.Delete(newPath);
             } catch (Exception ex) {
-                return ex.Message;
+                return ResultOrError<bool>.MakeError(ex.Message);
             }
 
-            return null;
+            return ResultOrError<bool>.MakeResult(true);
         }
 
-        public FileSystemEntry[] ListEntries(string path)
+        public ResultOrError<FileSystemEntry[]> ListEntries(string path)
         {
             FileSystemInfo[] files = currentDir.GetFileSystemInfos();
             List<FileSystemEntry> result = new List<FileSystemEntry>();
@@ -126,25 +127,27 @@ namespace mooftpserv
                 result.Add(entry);
             }
 
-            return result.ToArray();
+            return ResultOrError<FileSystemEntry[]>.MakeResult(result.ToArray());
         }
 
-        public long GetFileSize(string path)
+        public ResultOrError<long> GetFileSize(string path)
         {
             string fullpath = ResolvePath(path);
             if (!File.Exists(fullpath))
-                return -1;
+                return ResultOrError<long>.MakeError("File does not exist.");
 
-            return new FileInfo(fullpath).Length;
+            long size = new FileInfo(fullpath).Length;
+            return ResultOrError<long>.MakeResult(size);
         }
 
-        public DateTime? GetLastModifiedTime(string path)
+        public ResultOrError<DateTime> GetLastModifiedTimeUtc(string path)
         {
             string fullpath = ResolvePath(path);
             if (!File.Exists(fullpath))
-                return null;
+                return ResultOrError<DateTime>.MakeError("File does not exist.");
 
-            return new FileInfo(fullpath).LastWriteTimeUtc;
+            DateTime time = new FileInfo(fullpath).LastWriteTimeUtc;
+            return ResultOrError<DateTime>.MakeResult(time);
         }
 
         private string ResolvePath(string path)
