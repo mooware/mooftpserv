@@ -345,6 +345,11 @@ namespace mooftpserv
                     SendData(MakeStream(FormatDirList(ret.Result)));
                     break;
                 }
+                case "NOOP":
+                {
+                    Respond(200, GetRandomText(OK_TEXT));
+                    break;
+                }
                 default:
                 {
                     Respond(500, "Unknown command.");
