@@ -310,6 +310,9 @@ namespace mooftpserv.lib
             do {
                 int freeBytes = cmdRcvBuffer.Length - cmdRcvBytes;
                 int bytes = controlSocket.Receive(cmdRcvBuffer, cmdRcvBytes, freeBytes, SocketFlags.None);
+                if (bytes <= 0)
+                    break;
+
                 cmdRcvBytes += bytes;
 
                 // search \r\n
