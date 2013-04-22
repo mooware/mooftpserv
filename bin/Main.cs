@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.IO;
 using mooftpserv;
 
@@ -40,12 +41,23 @@ namespace mooftpserv
                 Console.Error.WriteLine(ex.Message);
             }
 
-            Server srv = new Server("0.0.0.0", port,
+            // on WinCE, 0.0.0.0 does not work because for accepted sockets,
+            // LocalEndPoint would also say 0.0.0.0 instead of the real IP
+            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
+            IPAddress bindIp = IPAddress.Any;
+            foreach (IPAddress ip in host.AddressList) {
+                if (!IPAddress.IsLoopback(ip)) {
+                    bindIp = ip;
+                    break;
+                }
+            }
+
+            Server srv = new Server(bindIp, port,
                                     new DefaultAuthHandler(),
                                     new DefaultFileSystemHandler(startDir),
                                     new DefaultLogHandler(verbose));
 
-            Console.Out.WriteLine("Starting server on port {0}", port);
+            Console.Out.WriteLine("Starting server on {0}:{1}, hosting {2}", bindIp, port, startDir);
 
             try {
                 srv.Run();
