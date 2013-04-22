@@ -501,10 +501,8 @@ namespace mooftpserv
         private string FormatDirList(FileSystemEntry[] list)
         {
             int maxSizeChars = 0;
-            int maxNameChars = 0;
             foreach (FileSystemEntry entry in list) {
                 maxSizeChars = Math.Max(maxSizeChars, entry.Size.ToString().Length);
-                maxNameChars = Math.Max(maxNameChars, entry.Name.Length);
             }
 
             DateTime sixMonthsAgo = DateTime.Now.ToUniversalTime().AddMonths(-6);
@@ -513,7 +511,7 @@ namespace mooftpserv
             foreach (FileSystemEntry entry in list) {
                 char dirflag = (entry.IsDirectory ? 'd' : '-');
                 string size = entry.Size.ToString().PadLeft(maxSizeChars);
-                string name = entry.Name.PadLeft(maxNameChars);
+                string name = entry.Name;
                 string modtime = MONTHS[entry.LastModifiedTimeUtc.Month - 1];
                 if (entry.LastModifiedTimeUtc < sixMonthsAgo)
                     modtime += entry.LastModifiedTimeUtc.ToString(" dd  yyyy");
