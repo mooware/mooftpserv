@@ -37,7 +37,7 @@ namespace mooftpserv
                 }
             }
             catch (Exception ex) {
-              Console.Error.WriteLine(ex.Message);
+                Console.Error.WriteLine(ex.Message);
             }
 
             Server srv = new Server("0.0.0.0", port,
@@ -46,7 +46,12 @@ namespace mooftpserv
                                     new DefaultLogHandler(verbose));
 
             Console.Out.WriteLine("Starting server on port {0}", port);
-            srv.Run();
+
+            try {
+                srv.Run();
+            } catch (Exception ex) {
+                Console.Error.WriteLine(ex.Message);
+            }
         }
     }
 }
