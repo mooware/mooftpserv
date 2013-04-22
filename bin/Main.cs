@@ -30,7 +30,7 @@ namespace mooftpserv
                 }
             }
 
-            DirectoryInfo startDir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            DirectoryInfo startDir = new DirectoryInfo(Path.GetFullPath("."));
             try {
                 if (argList.Count > 0) {
                   startDir = new DirectoryInfo(Path.GetFullPath(argList[0]));
