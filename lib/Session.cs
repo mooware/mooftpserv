@@ -534,8 +534,9 @@ namespace mooftpserv
                     bool passive = (dataPort == null);
                     logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
-                    int beforeSize = 0;
-                    int afterSize = 0;
+                    // on Windows, no ASCII conversion is necessary (CRLF == CRLF)
+                    bool noAsciiConv = (localEolBytes == remoteEolBytes);
+
                     byte[] buffer = new byte[BUFFER_SIZE + 1]; // +1 for partial EOL
                     try {
                         while (true) {
@@ -544,7 +545,7 @@ namespace mooftpserv
                                 break;
                             }
 
-                            if (transferDataType == DataType.IMAGE) {
+                            if (transferDataType == DataType.IMAGE || noAsciiConv) {
                                 // TYPE I -> just pass through
                                 socket.Send(buffer, bytes, SocketFlags.None);
                             } else {
@@ -562,9 +563,6 @@ namespace mooftpserv
                                 byte[] convBuffer = null;
                                 int convBytes = ConvertAsciiBytes(buffer, bytes, true, out convBuffer);
                                 socket.Send(convBuffer, convBytes, SocketFlags.None);
-
-                                beforeSize += bytes;
-                                afterSize += convBytes;
                             }
                         }
 
