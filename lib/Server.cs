@@ -53,6 +53,7 @@ namespace mooftpserv
 
         public void Stop()
         {
+            socket.Stop();
         }
     }
 }
