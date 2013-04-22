@@ -6,11 +6,32 @@ namespace mooftpserv
 {
     public class DefaultFileSystemHandler : IFileSystemHandler
     {
+        enum OS { Win, WinCE, Unix };
+
         private DirectoryInfo currentDir;
+        private OS os;
 
         public DefaultFileSystemHandler(DirectoryInfo startDir)
         {
             this.currentDir = startDir;
+
+            // try to find out the OS
+            string path = Path.GetFullPath(currentDir.FullName);
+            if (path.Length >= 2 && path[0] != '/' && path[1] == ':')
+            {
+              // probably Windows
+              os = OS.Win;
+            }
+            else if (path.Length >= 2 && path.StartsWith(@"\\"))
+            {
+              // probably Windows CE
+              os = OS.WinCE;
+            }
+            else
+            {
+              // probably UNIX
+              os = OS.Unix;
+            }
         }
 
         public IFileSystemHandler Clone()
@@ -20,7 +41,7 @@ namespace mooftpserv
 
         public ResultOrError<string> GetCurrentDirectory()
         {
-            return ResultOrError<string>.MakeResult(currentDir.FullName);
+            return ResultOrError<string>.MakeResult(EncodePath(currentDir.FullName));
         }
 
         public ResultOrError<string> ChangeDirectory(string path)
@@ -31,7 +52,7 @@ namespace mooftpserv
                 return ResultOrError<string>.MakeError("Path does not exist.");
 
             currentDir = newDir;
-            return ResultOrError<string>.MakeResult(newPath);
+            return ResultOrError<string>.MakeResult(EncodePath(newPath));
         }
 
         public ResultOrError<string> ChangeToParentDirectory()
@@ -52,7 +73,7 @@ namespace mooftpserv
                 return ResultOrError<string>.MakeError(ex.Message);
             }
 
-            return ResultOrError<string>.MakeResult(newPath);
+            return ResultOrError<string>.MakeResult(EncodePath(newPath));
         }
 
         public ResultOrError<bool> RemoveDirectory(string path)
@@ -179,12 +200,35 @@ namespace mooftpserv
                 return null;
 
             try {
-                return Path.GetFullPath(Path.Combine(currentDir.FullName, path));
+                string nativePath = DecodePath(path);
+                return Path.GetFullPath(Path.Combine(currentDir.FullName, nativePath));
             } catch (ArgumentException) {
                 // fall through
             }
 
             return null;
+        }
+
+        private string EncodePath(string path)
+        {
+            if (os == OS.Win)
+                return "/" + path.Substring(3).Replace(@"\", "/");
+            else if (os == OS.WinCE)
+                return path.Substring(1).Replace(@"\", "/");
+            else
+                return path;
+        }
+
+        private string DecodePath(string path)
+        {
+            bool root = path.StartsWith("/");
+
+            if (os == OS.Win)
+                return (root ? currentDir.Root.FullName : "") + path.Replace("/", @"\");
+            else if (os == OS.WinCE)
+                return (root ? @"\" : "") + path.Replace("/", @"\");
+            else
+                return path;
         }
     }
 }

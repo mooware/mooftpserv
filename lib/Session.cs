@@ -145,7 +145,7 @@ namespace mooftpserv
             switch (verb) {
                 case "SYST":
                 {
-                    Respond(215, "UNIX Type: L8");
+                    Respond(215, "UNIX emulated by mooftpserv");
                     break;
                 }
                 case "QUIT":
@@ -174,10 +174,11 @@ namespace mooftpserv
                 }
                 case "OPTS":
                 {
-                    if (arguments == "UTF8 ON")
+                    // Windows Explorer uses lowercase args
+                    if (arguments != null && arguments.ToUpper() == "UTF8 ON")
                         Respond(200, "Always in UTF8 mode.");
                     else
-                        Respond(501, "Unknown option.");
+                        Respond(504, "Unknown option.");
                     break;
                 }
                 case "TYPE":
@@ -224,7 +225,7 @@ namespace mooftpserv
                     }
 
                     string port = FormatAddress((IPEndPoint) dataSocket.LocalEndPoint);
-                    Respond(200, String.Format("Switched to passive mode ({0})", port));
+                    Respond(227, String.Format("Switched to passive mode ({0})", port));
                     break;
                 }
                 case "PWD":
