@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -7,8 +7,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{11367636-904E-48A8-B554-0C6324C599B1}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>bin</RootNamespace>
-    <AssemblyName>bin</AssemblyName>
+    <RootNamespace>mooftpserv</RootNamespace>
+    <AssemblyName>mooftpserv</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -29,6 +29,9 @@
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
     <Externalconsole>true</Externalconsole>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>mooftpserv.MainClass</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
