@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "lib_wince", "lib\lib_wince.csproj", "{25F2364A-EF8A-4D59-859B-C5516D3D7D1B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bin_wince", "bin\bin_wince.csproj", "{4AA59BAC-F459-4F7C-B834-0C7B74DF3C2E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{25F2364A-EF8A-4D59-859B-C5516D3D7D1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25F2364A-EF8A-4D59-859B-C5516D3D7D1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25F2364A-EF8A-4D59-859B-C5516D3D7D1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25F2364A-EF8A-4D59-859B-C5516D3D7D1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4AA59BAC-F459-4F7C-B834-0C7B74DF3C2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4AA59BAC-F459-4F7C-B834-0C7B74DF3C2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4AA59BAC-F459-4F7C-B834-0C7B74DF3C2E}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{4AA59BAC-F459-4F7C-B834-0C7B74DF3C2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4AA59BAC-F459-4F7C-B834-0C7B74DF3C2E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4AA59BAC-F459-4F7C-B834-0C7B74DF3C2E}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
