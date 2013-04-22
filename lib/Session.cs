@@ -9,6 +9,8 @@ namespace mooftpserv
 {
     public class Session
     {
+        enum DataType { ASCII, IMAGE };
+
         // size of stream buffers
         private static int BUFFER_SIZE = 4096;
         // version from AssemblyInfo
@@ -41,6 +43,9 @@ namespace mooftpserv
         private IPEndPoint peerEndPoint;
         private byte[] cmdRcvBuffer;
         private int cmdRcvBytes;
+        private DataType transferDataType = DataType.ASCII;
+        private byte[] localEolBytes = Encoding.ASCII.GetBytes(Environment.NewLine);
+        private byte[] remoteEolBytes = Encoding.ASCII.GetBytes("\r\n");
 
         public Session(Socket socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
         {
@@ -177,12 +182,12 @@ namespace mooftpserv
                 }
                 case "TYPE":
                 {
-                    // I don't see what difference the types make,
-                    // but the RFC says that I should support them
                     if (arguments == "A" || arguments == "A N") {
+                        transferDataType = DataType.ASCII;
                         Respond(200, "Switching to ASCII mode.");
                     } else if (arguments == "I") {
-                        Respond(200, "Switching to binary mode.");
+                        transferDataType = DataType.IMAGE;
+                        Respond(200, "Switching to BINARY mode.");
                     } else {
                         Respond(500, "Unknown TYPE arguments.");
                     }
@@ -528,17 +533,42 @@ namespace mooftpserv
                     bool passive = (dataPort == null);
                     logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
-                    byte[] buffer = new byte[BUFFER_SIZE];
+                    int beforeSize = 0;
+                    int afterSize = 0;
+                    byte[] buffer = new byte[BUFFER_SIZE + 1]; // +1 for partial EOL
                     try {
                         while (true) {
-                            int bytes = stream.Read(buffer, 0, buffer.Length);
-                            if (bytes <= 0)
+                            int bytes = stream.Read(buffer, 0, BUFFER_SIZE);
+                            if (bytes <= 0) {
                                 break;
+                            }
 
-                            socket.Send(buffer, bytes, SocketFlags.None);
+                            if (transferDataType == DataType.IMAGE) {
+                                // TYPE I -> just pass through
+                                socket.Send(buffer, bytes, SocketFlags.None);
+                            } else {
+                                // TYPE A -> convert local EOL style to CRLF
+
+                                // if the buffer ends with a potential partial EOL,
+                                // try to read the rest of the EOL
+                                // (i assume that the EOL has max. two bytes)
+                                if (localEolBytes.Length == 2 &&
+                                    buffer[bytes - 1] == localEolBytes[0]) {
+                                    if (stream.Read(buffer, bytes, 1) == 1)
+                                        ++bytes;
+                                }
+
+                                byte[] convBuffer = null;
+                                int convBytes = ConvertAsciiBytes(buffer, bytes, true, out convBuffer);
+                                socket.Send(convBuffer, convBytes, SocketFlags.None);
+
+                                beforeSize += bytes;
+                                afterSize += convBytes;
+                            }
                         }
 
-                        socket.Shutdown(SocketShutdown.Both);
+                        // flush socket before closing (done by using-statement)
+                        socket.Shutdown(SocketShutdown.Send);
                         Respond(226, "Transfer complete.");
                     } catch (Exception ex) {
                         Respond(500, ex.Message);
@@ -565,9 +595,9 @@ namespace mooftpserv
                     logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
                     try {
-                        byte[] buffer = new byte[BUFFER_SIZE];
+                        byte[] buffer = new byte[BUFFER_SIZE + 1]; // +1 for partial CRLF
                         while (true) {
-                            int bytes = socket.Receive(buffer);
+                            int bytes = socket.Receive(buffer, BUFFER_SIZE, SocketFlags.None);
                             if (bytes < 0) {
                                 Respond(500, String.Format("Transfer failed: receive returned {0}", bytes));
                                 return;
@@ -575,11 +605,26 @@ namespace mooftpserv
                                 break;
                             }
 
+                            if (transferDataType == DataType.IMAGE) {
+                                // TYPE I -> just pass through
+                                stream.Write(buffer, 0, bytes);
+                            } else {
+                                // TYPE A -> convert CRLF to local EOL style
 
-                            stream.Write(buffer, 0, bytes);
+                                // if the buffer ends with a potential partial CRLF,
+                                // try to read the LF
+                                if (buffer[bytes - 1] == remoteEolBytes[0]) {
+                                    if (socket.Receive(buffer, bytes, 1, SocketFlags.None) == 1)
+                                        ++bytes;
+                                }
+
+                                byte[] convBuffer = null;
+                                int convBytes = ConvertAsciiBytes(buffer, bytes, false, out convBuffer);
+                                stream.Write(convBuffer, 0, convBytes);
+                            }
                         }
 
-                        socket.Shutdown(SocketShutdown.Both);
+                        socket.Shutdown(SocketShutdown.Receive);
                         Respond(226, "Transfer complete.");
                     } catch (Exception ex) {
                         Respond(500, ex.Message);
@@ -634,6 +679,63 @@ namespace mooftpserv
                 Respond(500, String.Format("Failed to open data connection: {0}", ex.Message));
                 return null;
             }
+        }
+
+        private int ConvertAsciiBytes(byte[] buffer, int len, bool localToRemote, out byte[] resultBuffer)
+        {
+            byte[] fromBytes = (localToRemote ? localEolBytes : remoteEolBytes);
+            byte[] toBytes = (localToRemote ? remoteEolBytes : localEolBytes);
+            resultBuffer = null;
+
+            int startIndex = 0;
+            int resultLen = 0;
+            int searchLen;
+            while ((searchLen = len - startIndex) > 0) {
+                // search for the first byte of the EOL sequence
+                int eolIndex = Array.IndexOf(buffer, fromBytes[0], startIndex, searchLen);
+
+                // shortcut if there is no EOL in the whole buffer
+                if (eolIndex == -1 && startIndex == 0) {
+                    resultBuffer = buffer;
+                    return len;
+                }
+
+                // allocate to worst-case size
+                if (resultBuffer == null)
+                    resultBuffer = new byte[len * 2];
+
+                if (eolIndex == -1) {
+                    Array.Copy(buffer, startIndex, resultBuffer, resultLen, searchLen);
+                    resultLen += searchLen;
+                    break;
+                } else {
+                    // compare the rest of the EOL
+                    int matchBytes = 1;
+                    for (int i = 1; i < fromBytes.Length && eolIndex + i < len; ++i) {
+                        if (buffer[eolIndex + i] == fromBytes[i])
+                            ++matchBytes;
+                    }
+
+                    if (matchBytes == fromBytes.Length) {
+                        // found an EOL to convert
+                        int copyLen = eolIndex - startIndex;
+                        if (copyLen > 0) {
+                            Array.Copy(buffer, startIndex, resultBuffer, resultLen, copyLen);
+                            resultLen += copyLen;
+                        }
+                        Array.Copy(toBytes, 0, resultBuffer, resultLen, toBytes.Length);
+                        resultLen += toBytes.Length;
+                        startIndex += copyLen + fromBytes.Length;
+                    } else {
+                        int copyLen = (eolIndex - startIndex) + 1;
+                        Array.Copy(buffer, startIndex, resultBuffer, resultLen, copyLen);
+                        resultLen += copyLen;
+                        startIndex += copyLen;
+                    }
+                }
+            }
+
+            return resultLen;
         }
 
         private string EscapePath(string path)
