@@ -37,7 +37,7 @@ namespace mooftpserv
         {
             if (error == null)
                 throw new ArgumentNullException();
-            return new ResultOrError<T>(default(T), error);
+            return new ResultOrError<T>(default(T), error.Replace(Environment.NewLine, " "));
         }
 
         public bool HasError
@@ -169,12 +169,12 @@ namespace mooftpserv
         ResultOrError<bool> RenameFile(string fromPath, string toPath);
 
         /// <summary>
-        /// LIST: Return a list of files and folders in the current directory, or the optionally specified path.
+        /// LIST: Return a list of files and folders in the current directory.
         /// </summary>
-        /// <param name='path'>
+        /// <return>
         /// An array of file system entries or an error string.
-        /// </param>
-        ResultOrError<FileSystemEntry[]> ListEntries(string path);
+        /// </return>
+        ResultOrError<FileSystemEntry[]> ListEntries();
 
         /// <summary>
         /// SIZE: Gets the size of a file in bytes.
