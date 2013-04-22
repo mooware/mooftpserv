@@ -32,6 +32,7 @@ namespace mooftpserv
                 }
             }
 
+            DirectoryInfo startDir;
 #if WindowsCE
             // WinCE has no "current directory"
             startDir = new DirectoryInfo(Path.GetFullPath(@"\\"));
