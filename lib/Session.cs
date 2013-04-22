@@ -128,7 +128,7 @@ namespace mooftpserv
                             HandleAuth(verb, args);
                         }
                     } catch (Exception ex) {
-                        Respond(500, String.Format("Failed to process command: {0}", ex.Message));
+                        Respond(500, ex);
                     }
                 }
             } finally {
@@ -220,7 +220,7 @@ namespace mooftpserv
                     try {
                         CreateDataSocket(true);
                     } catch (Exception ex) {
-                        Respond(500, ex.Message);
+                        Respond(500, ex);
                         break;
                     }
 
@@ -350,7 +350,7 @@ namespace mooftpserv
                 }
                 case "LIST":
                 {
-                    ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries(arguments);
+                    ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries();
                     if (ret.HasError) {
                         Respond(500, ret.Error);
                         break;
@@ -431,6 +431,11 @@ namespace mooftpserv
         private void Respond(uint code, string desc)
         {
             Respond(code, desc, false);
+        }
+
+        private void Respond(uint code, Exception ex)
+        {
+            Respond(code, ex.Message.Replace(Environment.NewLine, " "));
         }
 
         private void HandleAuth(string verb, string args)
@@ -570,7 +575,7 @@ namespace mooftpserv
                         socket.Shutdown(SocketShutdown.Send);
                         Respond(226, "Transfer complete.");
                     } catch (Exception ex) {
-                        Respond(500, ex.Message);
+                        Respond(500, ex);
                         return;
                     } finally {
                         logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
@@ -626,7 +631,7 @@ namespace mooftpserv
                         socket.Shutdown(SocketShutdown.Receive);
                         Respond(226, "Transfer complete.");
                     } catch (Exception ex) {
-                        Respond(500, ex.Message);
+                        Respond(500, ex);
                         return;
                     } finally {
                         logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
@@ -675,7 +680,7 @@ namespace mooftpserv
                     return socket;
                 }
             } catch (Exception ex) {
-                Respond(500, String.Format("Failed to open data connection: {0}", ex.Message));
+                Respond(500, String.Format("Failed to open data connection: {0}", ex.Message.Replace(Environment.NewLine, " ")));
                 return null;
             }
         }
