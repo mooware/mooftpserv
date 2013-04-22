@@ -16,10 +16,10 @@ namespace mooftpserv
         private ILogHandler logHandler;
         private List<Session> sessions;
 
-        public Server(string host, int port, IAuthHandler auth, IFileSystemHandler filesys, ILogHandler log)
+        public Server(IPAddress host, int port, IAuthHandler auth, IFileSystemHandler filesys, ILogHandler log)
         {
             this.port = port;
-            this.host = IPAddress.Parse(host);
+            this.host = host;
             this.authHandler = auth;
             this.fsHandler = filesys;
             this.logHandler = log;
