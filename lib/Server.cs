@@ -16,24 +16,18 @@ namespace mooftpserv
         private ILogHandler logHandler;
         private List<Session> sessions;
 
-        public Server(string host, int port)
+        public Server(string host, int port, IAuthHandler auth, IFileSystemHandler filesys, ILogHandler log)
         {
             this.port = port;
             this.host = IPAddress.Parse(host);
+            this.authHandler = auth;
+            this.fsHandler = filesys;
+            this.logHandler = log;
             this.sessions = new List<Session>();
         }
 
         public void Run()
         {
-            if (authHandler == null)
-                authHandler = new DefaultAuthHandler();
-
-            if (fsHandler == null)
-                fsHandler = new DefaultFileSystemHandler(new DirectoryInfo(Directory.GetCurrentDirectory()));
-
-            if (logHandler == null)
-                logHandler = new DefaultLogHandler(true);
-
             if (socket == null)
                 socket = new TcpListener(host, port);
 
