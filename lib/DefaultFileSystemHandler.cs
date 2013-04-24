@@ -287,7 +287,7 @@ namespace mooftpserv
             if (os == OS.WinNT)
                 return "/" + path[0] + (path.Length > 2 ? path.Substring(2).Replace(@"\", "/") : "");
             else if (os == OS.WinCE)
-                return path.Substring(1).Replace(@"\", "/");
+                return path.Replace(@"\", "/");
             else
                 return path;
         }
@@ -313,11 +313,10 @@ namespace mooftpserv
                 else
                     return path[1] + @":\" + path.Substring(3).Replace("/", @"\");
             } else if (os == OS.WinCE) {
-                return @"\" + path.Replace("/", @"\");
+                return path.Replace("/", @"\");
             } else {
                 return path;
             }
         }
     }
 }
-
