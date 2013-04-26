@@ -23,7 +23,7 @@ namespace mooftpserv
         // response text for general ok messages
         private static string[] OK_TEXT = { "Sounds good.", "A 'thank you' wouldn't hurt.", "Alright, I'll do it...", "Consider it done." };
         // Result for FEAT command
-        private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "UTF8" };
+        private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "TVFS", "UTF8" };
 
         private Socket controlSocket;
         private IAuthHandler authHandler;
