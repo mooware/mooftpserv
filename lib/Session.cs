@@ -362,6 +362,23 @@ namespace mooftpserv
                     SendData(MakeStream(FormatDirList(ret.Result)));
                     break;
                 }
+                case "STAT":
+                {
+                    if (arguments == null || arguments.Trim() == "") {
+                        Respond(504, "not implemented.");
+                        break;
+                    }
+
+                    ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries(arguments);
+                    if (ret.HasError) {
+                        Respond(500, ret.Error);
+                        break;
+                    }
+
+                    Respond(213, "Status:\r\n" + FormatDirList(ret.Result), true);
+                    Respond(213, "Status done.");
+                    break;
+                }
                 case "NOOP":
                 {
                     Respond(200, GetRandomText(OK_TEXT));
@@ -429,7 +446,9 @@ namespace mooftpserv
             string response = code.ToString();
             if (desc != null)
                 response += (moreFollows ? '-' : ' ') + desc;
-            response += "\r\n";
+
+            if (!response.EndsWith("\r\n"))
+                response += "\r\n";
 
             byte[] sendBuffer = EncodeString(response);
             controlSocket.Send(sendBuffer);
