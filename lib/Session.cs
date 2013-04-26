@@ -21,7 +21,7 @@ namespace mooftpserv
         // response text for initial response. preceeded by application name and version number.
         private static string[] HELLO_TEXT = { "What can I do for you?", "Good day, sir or madam.", "Hey ho let's go!", "The poor man's FTP server." };
         // response text for general ok messages
-        private static string[] OK_TEXT = { "Sounds good.", "A 'thank you' wouldn't hurt.", "Alright, I'll do it...", "Consider it done." };
+        private static string[] OK_TEXT = { "Sounds good.", "Success!", "Alright, I'll do it...", "Consider it done." };
         // Result for FEAT command
         private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "TVFS", "UTF8" };
 
