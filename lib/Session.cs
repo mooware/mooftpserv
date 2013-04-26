@@ -493,66 +493,6 @@ namespace mooftpserv
             }
         }
 
-        private IPEndPoint ParseAddress(string address)
-        {
-            string[] tokens = address.Split(',');
-            byte[] bytes = new byte[tokens.Length];
-            for (int i = 0; i < tokens.Length; ++i) {
-                try {
-                    // CF is missing TryParse
-                    bytes[i] = byte.Parse(tokens[i]);
-                } catch (Exception) {
-                    return null;
-                }
-            }
-
-            long ip = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
-            int port = bytes[4] << 8 | bytes[5];
-            return new IPEndPoint(ip, port);
-        }
-
-        private string FormatAddress(IPEndPoint address)
-        {
-            byte[] ip = address.Address.GetAddressBytes();
-            int port = address.Port;
-
-            return String.Format("{0},{1},{2},{3},{4},{5}",
-                                 ip[0], ip[1], ip[2], ip[3],
-                                 (port & 0xFF00) >> 8, port & 0x00FF);
-        }
-
-        private string FormatTime(DateTime time)
-        {
-            return time.ToString("yyyyMMddHHmmss");
-        }
-
-        private string FormatDirList(FileSystemEntry[] list)
-        {
-            int maxSizeChars = 0;
-            foreach (FileSystemEntry entry in list) {
-                maxSizeChars = Math.Max(maxSizeChars, entry.Size.ToString().Length);
-            }
-
-            DateTime sixMonthsAgo = EnsureUnixTime(DateTime.Now.ToUniversalTime().AddMonths(-6));
-
-            string result = "";
-            foreach (FileSystemEntry entry in list) {
-                char dirflag = (entry.IsDirectory ? 'd' : '-');
-                string size = entry.Size.ToString().PadLeft(maxSizeChars);
-                DateTime time = EnsureUnixTime(entry.LastModifiedTimeUtc);
-                string timestr = MONTHS[time.Month - 1];
-                if (time < sixMonthsAgo)
-                    timestr += time.ToString(" dd  yyyy");
-                else
-                    timestr += time.ToString(" dd hh:mm");
-
-                result += String.Format("{0}rwxr--r-- 1 owner group {1} {2} {3}\r\n",
-                                        dirflag, size, timestr, entry.Name);
-            }
-
-            return result;
-        }
-
         private void SendData(Stream stream)
         {
             try {
@@ -768,6 +708,79 @@ namespace mooftpserv
             return resultLen;
         }
 
+        private IPEndPoint ParseAddress(string address)
+        {
+            string[] tokens = address.Split(',');
+            byte[] bytes = new byte[tokens.Length];
+            for (int i = 0; i < tokens.Length; ++i) {
+                try {
+                    // CF is missing TryParse
+                    bytes[i] = byte.Parse(tokens[i]);
+                } catch (Exception) {
+                    return null;
+                }
+            }
+
+            long ip = bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24;
+            int port = bytes[4] << 8 | bytes[5];
+            return new IPEndPoint(ip, port);
+        }
+
+        private string FormatAddress(IPEndPoint address)
+        {
+            byte[] ip = address.Address.GetAddressBytes();
+            int port = address.Port;
+
+            return String.Format("{0},{1},{2},{3},{4},{5}",
+                                 ip[0], ip[1], ip[2], ip[3],
+                                 (port & 0xFF00) >> 8, port & 0x00FF);
+        }
+
+        private string FormatDirList(FileSystemEntry[] list)
+        {
+            int maxSizeChars = 0;
+            foreach (FileSystemEntry entry in list) {
+                maxSizeChars = Math.Max(maxSizeChars, entry.Size.ToString().Length);
+            }
+
+            DateTime sixMonthsAgo = EnsureUnixTime(DateTime.Now.ToUniversalTime().AddMonths(-6));
+
+            string result = "";
+            foreach (FileSystemEntry entry in list) {
+                char dirflag = (entry.IsDirectory ? 'd' : '-');
+                string size = entry.Size.ToString().PadLeft(maxSizeChars);
+                DateTime time = EnsureUnixTime(entry.LastModifiedTimeUtc);
+                string timestr = MONTHS[time.Month - 1];
+                if (time < sixMonthsAgo)
+                    timestr += time.ToString(" dd  yyyy");
+                else
+                    timestr += time.ToString(" dd hh:mm");
+
+                result += String.Format("{0}rwxr--r-- 1 owner group {1} {2} {3}\r\n",
+                                        dirflag, size, timestr, entry.Name);
+            }
+
+            return result;
+        }
+
+        private string FormatTime(DateTime time)
+        {
+            return time.ToString("yyyyMMddHHmmss");
+        }
+
+        private DateTime EnsureUnixTime(DateTime time)
+        {
+            // the server claims to be UNIX, so there should be
+            // no timestamps before 1970.
+            // e.g. FileZilla does not handle them correctly.
+
+            int yearDiff = time.Year - 1970;
+            if (yearDiff < 0)
+              time.AddYears(-yearDiff);
+
+            return time;
+        }
+
         private string EscapePath(string path)
         {
             // double-quotes in paths are escaped by doubling them
@@ -787,19 +800,6 @@ namespace mooftpserv
         private string DecodeString(byte[] data)
         {
             return DecodeString(data, data.Length);
-        }
-
-        private DateTime EnsureUnixTime(DateTime time)
-        {
-            // the server claims to be UNIX, so there should be
-            // no timestamps before 1970.
-            // e.g. FileZilla does not handle them correctly.
-
-            int yearDiff = time.Year - 1970;
-            if (yearDiff < 0)
-              time.AddYears(-yearDiff);
-
-            return time;
         }
 
         private Stream MakeStream(string data)
