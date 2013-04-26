@@ -13,14 +13,10 @@ namespace mooftpserv
         {
             List<string> argList = new List<string>(args);
 
-            int port = 21;
-            try {
-                // CF is missing int.TryParse
-                if (argList.Count > 0) {
-                    port = int.Parse(argList[0]);
-                    argList.RemoveAt(0);
-                }
-            } catch (Exception) {
+            if (argList.Count > 0 && (argList[0] == "-h" || argList[0] == "--help"))
+            {
+                Console.Out.WriteLine("Usage: <program> [-v] [port] [start dir]");
+                return;
             }
 
             bool verbose = false;
@@ -30,6 +26,16 @@ namespace mooftpserv
                     verbose = true;
                     argList.RemoveAt(i);
                 }
+            }
+
+            int port = 21;
+            try {
+                // CF is missing int.TryParse
+                if (argList.Count > 0) {
+                    port = int.Parse(argList[0]);
+                    argList.RemoveAt(0);
+                }
+            } catch (Exception) {
             }
 
             DirectoryInfo startDir;
