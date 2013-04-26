@@ -338,7 +338,7 @@ namespace mooftpserv
                     if (ret.HasError)
                         Respond(550, ret.Error);
                     else
-                        Respond(213, FormatTime(ret.Result));
+                        Respond(213, FormatTime(EnsureUnixTime(ret.Result)));
                     break;
                 }
                 case "SIZE":
@@ -513,21 +513,21 @@ namespace mooftpserv
                 maxSizeChars = Math.Max(maxSizeChars, entry.Size.ToString().Length);
             }
 
-            DateTime sixMonthsAgo = DateTime.Now.ToUniversalTime().AddMonths(-6);
+            DateTime sixMonthsAgo = EnsureUnixTime(DateTime.Now.ToUniversalTime().AddMonths(-6));
 
             string result = "";
             foreach (FileSystemEntry entry in list) {
                 char dirflag = (entry.IsDirectory ? 'd' : '-');
                 string size = entry.Size.ToString().PadLeft(maxSizeChars);
-                string name = entry.Name;
-                string modtime = MONTHS[entry.LastModifiedTimeUtc.Month - 1];
-                if (entry.LastModifiedTimeUtc < sixMonthsAgo)
-                    modtime += entry.LastModifiedTimeUtc.ToString(" dd  yyyy");
+                DateTime time = EnsureUnixTime(entry.LastModifiedTimeUtc);
+                string timestr = MONTHS[time.Month - 1];
+                if (time < sixMonthsAgo)
+                    timestr += time.ToString(" dd  yyyy");
                 else
-                    modtime += entry.LastModifiedTimeUtc.ToString(" dd hh:mm");
+                    timestr += time.ToString(" dd hh:mm");
 
                 result += String.Format("{0}rwxr--r-- 1 owner group {1} {2} {3}\r\n",
-                                        dirflag, size, modtime, name);
+                                        dirflag, size, timestr, entry.Name);
             }
 
             return result;
@@ -766,6 +766,19 @@ namespace mooftpserv
         private string DecodeString(byte[] data)
         {
             return DecodeString(data, data.Length);
+        }
+
+        private DateTime EnsureUnixTime(DateTime time)
+        {
+            // the server claims to be UNIX, so there should be
+            // no timestamps before 1970.
+            // e.g. FileZilla does not handle them correctly.
+
+            int yearDiff = time.Year - 1970;
+            if (yearDiff < 0)
+              time.AddYears(-yearDiff);
+
+            return time;
         }
 
         private Stream MakeStream(string data)
