@@ -200,7 +200,15 @@ namespace mooftpserv
 #endif
 
             string realPath = DecodePath(newPath);
-            FileSystemInfo[] files = new DirectoryInfo(realPath).GetFileSystemInfos();
+            FileSystemInfo[] files;
+
+            if (File.Exists(realPath))
+                files = new FileSystemInfo[] { new FileInfo(realPath) };
+            else if (Directory.Exists(realPath))
+                files = new DirectoryInfo(realPath).GetFileSystemInfos();
+            else
+                return ResultOrError<FileSystemEntry[]>.MakeError("Path does not exist.");
+
             foreach (FileSystemInfo file in files) {
                 FileSystemEntry entry = new FileSystemEntry();
                 entry.Name = file.Name;

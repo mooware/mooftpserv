@@ -162,11 +162,11 @@ namespace mooftpserv
         ResultOrError<bool> RenameFile(string fromPath, string toPath);
 
         /// <summary>
-        /// LIST: Return a list of files and folders in a directory.
+        /// LIST: Return a list of files and folders in a directory, or for a file (like 'ls').
         /// </summary>
         /// <param name="path">
-        /// The relative or absolute path of an existing directory. Can be null or empty
-        /// to return the current directory.
+        /// The relative or absolute path of an existing directory or file.
+        /// Can be null or empty to return the current directory.
         /// </para>
         /// <return>
         /// An array of file system entries or an error string.
