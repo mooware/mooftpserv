@@ -13,7 +13,7 @@ namespace mooftpserv
         {
             List<string> argList = new List<string>(args);
 
-            int port = 2121;
+            int port = 21;
             try {
                 // CF is missing int.TryParse
                 if (argList.Count > 0) {
