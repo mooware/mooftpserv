@@ -131,6 +131,8 @@ namespace mooftpserv
                         Respond(500, ex);
                     }
                 }
+            } catch (Exception) {
+                // catch any uncaught stuff, the server should not throw anything
             } finally {
                 if (controlSocket.Connected)
                     controlSocket.Close();
@@ -382,19 +384,25 @@ namespace mooftpserv
             if (cmdRcvBytes > 0)
                 Array.IndexOf(cmdRcvBuffer, (byte)'\n', 0, cmdRcvBytes);
 
-            do {
-                int freeBytes = cmdRcvBuffer.Length - cmdRcvBytes;
-                int bytes = controlSocket.Receive(cmdRcvBuffer, cmdRcvBytes, freeBytes, SocketFlags.None);
-                if (bytes <= 0)
-                    break;
+            try {
+                // read data until a newline is found
+                do {
+                    int freeBytes = cmdRcvBuffer.Length - cmdRcvBytes;
+                    int bytes = controlSocket.Receive(cmdRcvBuffer, cmdRcvBytes, freeBytes, SocketFlags.None);
+                    if (bytes <= 0)
+                        break;
 
-                cmdRcvBytes += bytes;
+                    cmdRcvBytes += bytes;
 
-                // search \r\n
-                endPos = Array.IndexOf(cmdRcvBuffer, (byte)'\r', 0, cmdRcvBytes);
-                if (endPos != -1 && (cmdRcvBytes <= endPos + 1 || cmdRcvBuffer[endPos + 1] != (byte)'\n'))
-                    endPos = -1;
-            } while (endPos == -1 && cmdRcvBytes < cmdRcvBuffer.Length);
+                    // search \r\n
+                    endPos = Array.IndexOf(cmdRcvBuffer, (byte)'\r', 0, cmdRcvBytes);
+                    if (endPos != -1 && (cmdRcvBytes <= endPos + 1 || cmdRcvBuffer[endPos + 1] != (byte)'\n'))
+                        endPos = -1;
+                } while (endPos == -1 && cmdRcvBytes < cmdRcvBuffer.Length);
+            } catch (SocketException) {
+                // in case the socket is closed or has some other error while reading
+                return false;
+            }
 
             if (endPos == -1)
                 return false;
