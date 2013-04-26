@@ -365,7 +365,7 @@ namespace mooftpserv
                 case "STAT":
                 {
                     if (arguments == null || arguments.Trim() == "") {
-                        Respond(504, "not implemented.");
+                        Respond(504, "Not implemented for these arguments.");
                         break;
                     }
 
