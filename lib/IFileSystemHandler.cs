@@ -81,6 +81,7 @@ namespace mooftpserv
 
         /// <summary>
         /// CWD: Changes the current directory.
+        /// CDUP: Changes to parent directory (called with "..")
         /// </summary>
         /// <returns>
         /// The new absolute path or an error string.
@@ -89,14 +90,6 @@ namespace mooftpserv
         /// A relative or absolute path to which to change.
         /// </param>
         ResultOrError<string> ChangeDirectory(string path);
-
-        /// <summary>
-        /// CDUP: Changes the current directory to the parent directory.
-        /// </summary>
-        /// <returns>
-        /// The new absolute path or an error string.
-        /// </returns>
-        ResultOrError<string> ChangeToParentDirectory();
 
         /// <summary>
         /// MKD: Create a directory.

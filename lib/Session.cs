@@ -251,7 +251,7 @@ namespace mooftpserv
                 }
                 case "CDUP":
                 {
-                    ResultOrError<string> ret = fsHandler.ChangeToParentDirectory();
+                    ResultOrError<string> ret = fsHandler.ChangeDirectory("..");
                     if (ret.HasError)
                         Respond(550, ret.Error);
                     else
