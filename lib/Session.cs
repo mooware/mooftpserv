@@ -352,7 +352,7 @@ namespace mooftpserv
                 }
                 case "LIST":
                 {
-                    ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries();
+                    ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries(arguments);
                     if (ret.HasError) {
                         Respond(500, ret.Error);
                         break;

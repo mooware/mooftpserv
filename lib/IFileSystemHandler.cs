@@ -169,12 +169,16 @@ namespace mooftpserv
         ResultOrError<bool> RenameFile(string fromPath, string toPath);
 
         /// <summary>
-        /// LIST: Return a list of files and folders in the current directory.
+        /// LIST: Return a list of files and folders in a directory.
         /// </summary>
+        /// <param name="path">
+        /// The relative or absolute path of an existing directory. Can be null or empty
+        /// to return the current directory.
+        /// </para>
         /// <return>
         /// An array of file system entries or an error string.
         /// </return>
-        ResultOrError<FileSystemEntry[]> ListEntries();
+        ResultOrError<FileSystemEntry[]> ListEntries(string path);
 
         /// <summary>
         /// SIZE: Gets the size of a file in bytes.

@@ -48,11 +48,14 @@ namespace mooftpserv
         public ResultOrError<string> ChangeDirectory(string path)
         {
             string newPath = ResolvePath(path);
+
+#if !WindowsCE
             // special fake root for WinNT drives
             if (os == OS.WinNT && newPath == "/") {
                 currentPath = newPath;
                 return ResultOrError<string>.MakeResult(newPath);
             }
+#endif
 
             string realPath = DecodePath(newPath);
             if (!Directory.Exists(realPath))
@@ -168,13 +171,17 @@ namespace mooftpserv
             return ResultOrError<bool>.MakeResult(true);
         }
 
-        public ResultOrError<FileSystemEntry[]> ListEntries()
+        public ResultOrError<FileSystemEntry[]> ListEntries(string path)
         {
+            string newPath = ResolvePath(path);
+            if (newPath == null)
+                newPath = currentPath;
+
             List<FileSystemEntry> result = new List<FileSystemEntry>();
 
-            // special fake root for WinNT drives
-            if (os == OS.WinNT && currentPath == "/") {
 #if !WindowsCE
+            // special fake root for WinNT drives
+            if (os == OS.WinNT && newPath == "/") {
                 DriveInfo[] drives = DriveInfo.GetDrives();
                 foreach (DriveInfo drive in drives) {
                     if (!drive.IsReady)
@@ -187,20 +194,21 @@ namespace mooftpserv
                     entry.LastModifiedTimeUtc = DateTime.MinValue;
                     result.Add(entry);
                 }
-#endif
+
+                return ResultOrError<FileSystemEntry[]>.MakeResult(result.ToArray());
             }
-            else {
-                string realPath = DecodePath(currentPath);
-                FileSystemInfo[] files = new DirectoryInfo(realPath).GetFileSystemInfos();
-                foreach (FileSystemInfo file in files) {
-                    FileSystemEntry entry = new FileSystemEntry();
-                    entry.Name = file.Name;
-                    // CF is missing FlagsAttribute.HasFlag
-                    entry.IsDirectory = ((file.Attributes & FileAttributes.Directory) == FileAttributes.Directory);
-                    entry.Size = (entry.IsDirectory ? 0 : ((FileInfo) file).Length);
-                    entry.LastModifiedTimeUtc = file.LastWriteTime.ToUniversalTime();
-                    result.Add(entry);
-                }
+#endif
+
+            string realPath = DecodePath(newPath);
+            FileSystemInfo[] files = new DirectoryInfo(realPath).GetFileSystemInfos();
+            foreach (FileSystemInfo file in files) {
+                FileSystemEntry entry = new FileSystemEntry();
+                entry.Name = file.Name;
+                // CF is missing FlagsAttribute.HasFlag
+                entry.IsDirectory = ((file.Attributes & FileAttributes.Directory) == FileAttributes.Directory);
+                entry.Size = (entry.IsDirectory ? 0 : ((FileInfo) file).Length);
+                entry.LastModifiedTimeUtc = file.LastWriteTime.ToUniversalTime();
+                result.Add(entry);
             }
 
             return ResultOrError<FileSystemEntry[]>.MakeResult(result.ToArray());
