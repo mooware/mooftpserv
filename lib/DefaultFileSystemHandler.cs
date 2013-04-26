@@ -6,25 +6,22 @@ namespace mooftpserv
 {
     public class DefaultFileSystemHandler : IFileSystemHandler
     {
-        enum OS { WinNT, WinCE, Unix };
+        // list of supported operating systems
+        private enum OS { WinNT, WinCE, Unix };
 
-        private string currentPath;
+        // currently used operating system
         private OS os;
+        // current path as TVFS or unix-like
+        private string currentPath;
 
         public DefaultFileSystemHandler(DirectoryInfo startDir)
         {
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-            {
               os = OS.WinNT;
-            }
             else if (Environment.OSVersion.Platform == PlatformID.WinCE)
-            {
               os = OS.WinCE;
-            }
             else // probably UNIX
-            {
               os = OS.Unix;
-            }
 
             this.currentPath = EncodePath(startDir.FullName);
         }
