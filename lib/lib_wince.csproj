@@ -53,6 +53,7 @@
     <Compile Include="DefaultAuthHandler.cs" />
     <Compile Include="DefaultFileSystemHandler.cs" />
     <Compile Include="DefaultLogHandler.cs" />
+    <Compile Include="FileSystemHelper.cs" />
     <Compile Include="IAuthHandler.cs" />
     <Compile Include="IFileSystemHandler.cs" />
     <Compile Include="ILogHandler.cs" />
