@@ -776,9 +776,9 @@ namespace mooftpserv
 
             int yearDiff = time.Year - 1970;
             if (yearDiff < 0)
-              time.AddYears(-yearDiff);
-
-            return time;
+              return time.AddYears(-yearDiff);
+            else
+              return time;
         }
 
         private string EscapePath(string path)
