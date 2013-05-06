@@ -222,7 +222,9 @@ namespace mooftpserv
         public ResultOrError<long> GetFileSize(string path)
         {
             string realPath = DecodePath(ResolvePath(path));
-            if (!File.Exists(realPath))
+            if (Directory.Exists(realPath))
+                return ResultOrError<long>.MakeError("Cannot get size of directory.");
+            else if (!File.Exists(realPath))
                 return ResultOrError<long>.MakeError("File does not exist.");
 
             long size = new FileInfo(realPath).Length;
