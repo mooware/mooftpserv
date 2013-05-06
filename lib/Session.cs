@@ -353,6 +353,10 @@ namespace mooftpserv
                 }
                 case "LIST":
                 {
+                    // apparently browsers like to pass arguments to LIST
+                    // assuming they are passed through to the UNIX ls command
+                    arguments = RemoveLsArgs(arguments);
+
                     ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries(arguments);
                     if (ret.HasError) {
                         Respond(500, ret.Error);
@@ -368,6 +372,8 @@ namespace mooftpserv
                         Respond(504, "Not implemented for these arguments.");
                         break;
                     }
+
+                    arguments = RemoveLsArgs(arguments);
 
                     ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries(arguments);
                     if (ret.HasError) {
@@ -785,6 +791,18 @@ namespace mooftpserv
         {
             // double-quotes in paths are escaped by doubling them
             return '"' + path.Replace("\"", "\"\"") + '"';
+        }
+
+        private string RemoveLsArgs(string args)
+        {
+            if (args != null && (args.StartsWith("-a") || args.StartsWith("-l"))) {
+                if (args.Length == 2)
+                    return null;
+                else if (args.Length > 3 && args[2] == ' ')
+                    return args.Substring(3);
+            }
+
+            return args;
         }
 
         private byte[] EncodeString(string data)
