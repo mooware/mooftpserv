@@ -2,6 +2,9 @@ using System;
 
 namespace mooftpserv
 {
+    /// <summary>
+    /// Interface for a class managing user authentication.
+    /// </summary>
     public interface IAuthHandler
     {
         /// <summary>

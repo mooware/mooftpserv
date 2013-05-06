@@ -4,6 +4,9 @@ using System.IO;
 
 namespace mooftpserv
 {
+    /// <summary>
+    /// Default file system handler. Allows access to the whole file system. Supports drives on Windows.
+    /// </summary>
     public class DefaultFileSystemHandler : IFileSystemHandler
     {
         // list of supported operating systems

@@ -4,6 +4,12 @@ using System.Net;
 
 namespace mooftpserv
 {
+    /// <summary>
+    /// Default log handler.
+    ///
+    /// Writes to stdout by default. Writes messages for every event
+    /// in Verbose mode, otherwise only new and closed control connections.
+    /// </summary>
     public class DefaultLogHandler : ILogHandler
     {
         private TextWriter Out;

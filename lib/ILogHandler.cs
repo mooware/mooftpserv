@@ -3,6 +3,9 @@ using System.Net;
 
 namespace mooftpserv
 {
+    /// <summary>
+    /// Interface for a logger. Methods should be self-explanatory.
+    /// </summary>
     public interface ILogHandler
     {
         void NewControlConnection(IPEndPoint peer);
