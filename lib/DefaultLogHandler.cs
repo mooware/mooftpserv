@@ -23,46 +23,46 @@ namespace mooftpserv
         {
         }
 
-        private void Write(string format, params object[] args)
+        private void Write(IPEndPoint peer, string format, params object[] args)
         {
-            string now = DateTime.Now.ToString("HH:mm:ss.fff ");
-            Out.WriteLine(now + String.Format(format, args));
+            string now = DateTime.Now.ToString("HH:mm:ss.fff");
+            Out.WriteLine(String.Format("{0}, {1}: {2}", now, peer, String.Format(format, args)));
         }
 
         public void NewControlConnection(IPEndPoint peer)
         {
-            Write("new control connection from {0}", peer);
+            Write(peer, "new control connection");
         }
 
         public void ClosedControlConnection(IPEndPoint peer)
         {
-            Write("closed control connection to {0}", peer);
+            Write(peer, "closed control connection");
         }
 
         public void ReceivedCommand(IPEndPoint peer, string verb, string arguments)
         {
             if (Verbose) {
                 string argtext = (arguments == null || arguments == "" ? "" : ' ' + arguments);
-                Write("received command from {0}: {1}{2}", peer, verb, argtext);
+                Write(peer, "received command: {0}{1}", verb, argtext);
             }
         }
 
         public void SentResponse(IPEndPoint peer, uint code, string description)
         {
             if (Verbose)
-                Write("sent response to {0}: {1} {2}", peer, code, description);
+                Write(peer, "sent response: {0} {1}", code, description);
         }
 
         public void NewDataConnection(IPEndPoint peer, IPEndPoint remote, IPEndPoint local, bool passive)
         {
             if (Verbose)
-                Write("new data connection from {0}: {1} <-> {2} ({3})", peer, remote, local, (passive ? "passive" : "active"));
+                Write(peer, "new data connection: {0} <-> {1} ({2})", remote, local, (passive ? "passive" : "active"));
         }
 
         public void ClosedDataConnection(IPEndPoint peer, IPEndPoint remote, IPEndPoint local, bool passive)
         {
             if (Verbose)
-                Write("closed data connection to {0}: {1} <-> {2} ({3})", peer, remote, local, (passive ? "passive" : "active"));
+                Write(peer, "closed data connection: {0} <-> {1} ({2})", remote, local, (passive ? "passive" : "active"));
         }
     }
 }
