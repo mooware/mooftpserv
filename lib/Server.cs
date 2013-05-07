@@ -171,7 +171,6 @@ namespace mooftpserv
             foreach (IPAddress ip in host.AddressList) {
                 if (ip.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ip)) {
                     return ip;
-                    break;
                 }
             }
 
