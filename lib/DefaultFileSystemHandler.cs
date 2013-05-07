@@ -17,7 +17,7 @@ namespace mooftpserv
         // current path as TVFS or unix-like
         private string currentPath;
 
-        public DefaultFileSystemHandler(DirectoryInfo startDir)
+        public DefaultFileSystemHandler(string startPath)
         {
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
               os = OS.WinNT;
@@ -26,7 +26,11 @@ namespace mooftpserv
             else // probably UNIX
               os = OS.Unix;
 
-            this.currentPath = EncodePath(startDir.FullName);
+            this.currentPath = startPath;
+        }
+
+        public DefaultFileSystemHandler() : this("/")
+        {
         }
 
         private DefaultFileSystemHandler(string path, OS os)

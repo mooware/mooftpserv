@@ -41,49 +41,22 @@ namespace mooftpserv
                 }
             }
 
-            DirectoryInfo startDir;
-#if WindowsCE
-            // WinCE has no "current directory"
-            startDir = new DirectoryInfo(Path.GetFullPath(@"\"));
-#else
-            startDir = new DirectoryInfo(Directory.GetCurrentDirectory());
-#endif
-            try {
-                if (argList.Count > 0) {
-                  startDir = new DirectoryInfo(Path.GetFullPath(argList[0]));
-                }
-            }
-            catch (Exception ex) {
-                Console.Error.WriteLine(ex.Message);
-            }
+            Server srv = new Server();
 
-#if WindowsCE
-            // on WinCE, 0.0.0.0 does not work because for accepted sockets,
-            // LocalEndPoint would also say 0.0.0.0 instead of the real IP
-            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
-            IPAddress bindIp = IPAddress.Loopback;
-            foreach (IPAddress ip in host.AddressList) {
-                if (ip.AddressFamily != AddressFamily.InterNetworkV6 && !IPAddress.IsLoopback(ip)) {
-                    bindIp = ip;
-                    break;
-                }
-            }
-#else
-            IPAddress bindIp = IPAddress.Any;
-#endif
+            srv.LogHandler = new DefaultLogHandler(verbose);
 
-            Server srv = new Server(bindIp, port, buffer,
-                                    new DefaultAuthHandler(),
-                                    new DefaultFileSystemHandler(startDir),
-                                    new DefaultLogHandler(verbose));
+            if (port != -1)
+                srv.LocalPort = port;
 
-            Console.Out.WriteLine("Starting server on {0}:{1}, default path is {2}", bindIp, port, startDir);
+            if (buffer != -1)
+                srv.BufferSize = buffer;
+
+            Console.Out.WriteLine("Starting server on {0}", srv.LocalEndPoint);
 
             try {
                 srv.Run();
             } catch (Exception ex) {
                 Console.Error.WriteLine(ex.Message);
-                srv.Stop();
             }
         }
 
