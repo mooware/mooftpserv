@@ -19,10 +19,11 @@ namespace mooftpserv
         private ILogHandler logHandler;
         private List<Session> sessions;
 
-        public Server(IPAddress host, int port, IAuthHandler auth, IFileSystemHandler filesys, ILogHandler log)
+        public Server(IPAddress host, int port, int bufferSize, IAuthHandler auth, IFileSystemHandler filesys, ILogHandler log)
         {
             this.port = port;
             this.host = host;
+            this.bufferSize = (bufferSize == -1 ? DEFAULT_BUFFER_SIZE : bufferSize);
             this.authHandler = auth;
             this.fsHandler = filesys;
             this.logHandler = log;
@@ -39,7 +40,7 @@ namespace mooftpserv
             while (true)
             {
                 Socket client = socket.AcceptSocket();
-                Session session = new Session(client, DEFAULT_BUFFER_SIZE, authHandler.Clone(), fsHandler.Clone(), logHandler);
+                Session session = new Session(client, bufferSize, authHandler.Clone(), fsHandler.Clone(), logHandler);
                 session.Start();
                 sessions.Add(session);
 

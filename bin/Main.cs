@@ -11,31 +11,34 @@ namespace mooftpserv
     {
         public static void Main(string[] args)
         {
-            List<string> argList = new List<string>(args);
-
-            if (argList.Count > 0 && (argList[0] == "-h" || argList[0] == "--help"))
-            {
-                Console.Out.WriteLine("Usage: <program> [-v] [port] [start dir]");
-                return;
-            }
-
             bool verbose = false;
-            if (argList.Count > 0) {
-                int i = argList.IndexOf("-v");
-                if (i != -1) {
-                    verbose = true;
-                    argList.RemoveAt(i);
-                }
-            }
+            int port = -1;
+            int buffer = -1;
 
-            int port = 21;
-            try {
-                // CF is missing int.TryParse
-                if (argList.Count > 0) {
-                    port = int.Parse(argList[0]);
-                    argList.RemoveAt(0);
+            // process args
+            for (int i = 0; i < args.Length; ++i) {
+                if (args[i] == "-h" || args[i] == "--help") {
+                    Console.Out.WriteLine("Usage: <program> [-v|--verbose] [-p|--port <port>] [-b|--buffer <kbsize>]");
+                    return;
+                } else if (args[i] == "-v" || args[i] == "--verbose") {
+                    verbose = true;
+                } else if (args[i] == "-p" || args[i] == "--port") {
+                    if (i == args.Length - 1) {
+                        Abort("Too few arguments for {0}", args[i]);
+                    }
+
+                    port = ParseNumber(args[i], args[i + 1]);
+                    ++i;
+                } else if (args[i] == "-b" || args[i] == "--buffer") {
+                    if (i == args.Length - 1) {
+                        Abort("Too few arguments for {0}", args[i]);
+                    }
+
+                    buffer = ParseNumber(args[i], args[i + 1]);
+                    ++i;
+                } else {
+                    Abort("Unknown argument '{0}'", args[i]);
                 }
-            } catch (Exception) {
             }
 
             DirectoryInfo startDir;
@@ -69,7 +72,7 @@ namespace mooftpserv
             IPAddress bindIp = IPAddress.Any;
 #endif
 
-            Server srv = new Server(bindIp, port,
+            Server srv = new Server(bindIp, port, buffer,
                                     new DefaultAuthHandler(),
                                     new DefaultFileSystemHandler(startDir),
                                     new DefaultLogHandler(verbose));
@@ -82,6 +85,26 @@ namespace mooftpserv
                 Console.Error.WriteLine(ex.Message);
                 srv.Stop();
             }
+        }
+
+        private static void Abort(string format, params object[] arg)
+        {
+            Console.Error.WriteLine(format, arg);
+            Environment.Exit(1);
+        }
+
+        private static int ParseNumber(string option, string text)
+        {
+            try {
+                // CF does not have int.TryParse
+                int num = int.Parse(text);
+                if (num > 0)
+                    return num;
+            } catch (Exception) {
+            }
+
+            Abort("Invalid value for '{0}': {1}", option, text);
+            return -1;
         }
     }
 }
