@@ -49,7 +49,7 @@ namespace mooftpserv
                 srv.LocalPort = port;
 
             if (buffer != -1)
-                srv.BufferSize = buffer;
+                srv.BufferSize = buffer * 1024; // in KB
 
             Console.Out.WriteLine("Starting server on {0}", srv.LocalEndPoint);
 
