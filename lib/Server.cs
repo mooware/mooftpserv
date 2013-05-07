@@ -8,6 +8,9 @@ namespace mooftpserv
 {
     public class Server
     {
+        // default buffer size for send/receive buffers
+        private const int DEFAULT_BUFFER_SIZE = 64 * 1024;
+
         private int port;
         private IPAddress host;
         private TcpListener socket;
@@ -36,7 +39,7 @@ namespace mooftpserv
             while (true)
             {
                 Socket client = socket.AcceptSocket();
-                Session session = new Session(client, authHandler.Clone(), fsHandler.Clone(), logHandler);
+                Session session = new Session(client, DEFAULT_BUFFER_SIZE, authHandler.Clone(), fsHandler.Clone(), logHandler);
                 session.Start();
                 sessions.Add(session);
 

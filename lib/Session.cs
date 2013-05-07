@@ -12,8 +12,6 @@ namespace mooftpserv
         // transfer data type, ascii or binary
         enum DataType { ASCII, IMAGE };
 
-        // size of stream buffers
-        private static int BUFFER_SIZE = 4096;
         // version from AssemblyInfo
         private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
         // monthnames for LIST command, since DateTime returns localized names
@@ -48,14 +46,15 @@ namespace mooftpserv
         private byte[] localEolBytes = Encoding.ASCII.GetBytes(Environment.NewLine);
         private byte[] remoteEolBytes = Encoding.ASCII.GetBytes("\r\n");
 
-        public Session(Socket socket, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
+        public Session(Socket socket, int bufferSize, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
         {
             this.controlSocket = socket;
+            this.bufferSize = bufferSize;
             this.authHandler = authHandler;
             this.fsHandler = fileSystemHandler;
             this.logHandler = logHandler;
             this.peerEndPoint = (IPEndPoint) socket.RemoteEndPoint;
-            this.cmdRcvBuffer = new byte[BUFFER_SIZE];
+            this.cmdRcvBuffer = new byte[bufferSize];
             this.cmdRcvBytes = 0;
             this.randomTextIndex = new Random();
 
@@ -522,10 +521,10 @@ namespace mooftpserv
                     // on Windows, no ASCII conversion is necessary (CRLF == CRLF)
                     bool noAsciiConv = (localEolBytes == remoteEolBytes);
 
-                    byte[] buffer = new byte[BUFFER_SIZE + 1]; // +1 for partial EOL
+                    byte[] buffer = new byte[bufferSize + 1]; // +1 for partial EOL
                     try {
                         while (true) {
-                            int bytes = stream.Read(buffer, 0, BUFFER_SIZE);
+                            int bytes = stream.Read(buffer, 0, bufferSize);
                             if (bytes <= 0) {
                                 break;
                             }
@@ -582,9 +581,9 @@ namespace mooftpserv
                         logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
                     try {
-                        byte[] buffer = new byte[BUFFER_SIZE + 1]; // +1 for partial CRLF
+                        byte[] buffer = new byte[bufferSize + 1]; // +1 for partial CRLF
                         while (true) {
-                            int bytes = socket.Receive(buffer, BUFFER_SIZE, SocketFlags.None);
+                            int bytes = socket.Receive(buffer, bufferSize, SocketFlags.None);
                             if (bytes < 0) {
                                 Respond(500, String.Format("Transfer failed: receive returned {0}", bytes));
                                 return;
