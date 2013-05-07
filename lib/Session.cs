@@ -17,6 +17,8 @@ namespace mooftpserv
         // transfer data type, ascii or binary
         enum DataType { ASCII, IMAGE };
 
+        // buffer size to use for reading commands from the control connection
+        private const int CMD_BUFFER_SIZE = 4096;
         // version from AssemblyInfo
         private const string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
         // monthnames for LIST command, since DateTime returns localized names
@@ -30,7 +32,7 @@ namespace mooftpserv
 
         // socket for the control connection
         private Socket controlSocket;
-        // buffer size to use sending/receiving with data connections
+        // buffer size to use for sending/receiving with data connections
         private int bufferSize;
         // auth handler, checks user credentials
         private IAuthHandler authHandler;
@@ -82,7 +84,7 @@ namespace mooftpserv
             this.fsHandler = fileSystemHandler;
             this.logHandler = logHandler;
             this.peerEndPoint = (IPEndPoint) socket.RemoteEndPoint;
-            this.cmdRcvBuffer = new byte[bufferSize];
+            this.cmdRcvBuffer = new byte[CMD_BUFFER_SIZE];
             this.cmdRcvBytes = 0;
             this.randomTextIndex = new Random();
 
