@@ -659,29 +659,42 @@ namespace mooftpserv
                     try {
                         byte[] buffer = new byte[bufferSize + 1]; // +1 for partial CRLF
                         while (true) {
-                            int bytes = socket.Receive(buffer, bufferSize, SocketFlags.None);
-                            if (bytes < 0) {
-                                Respond(500, String.Format("Transfer failed: receive returned {0}", bytes));
-                                return;
-                            } else if (bytes == 0) {
-                                break;
+                            // fill up the in-memory buffer before writing to disk
+                            int totalBytes = 0;
+                            while (totalBytes < bufferSize) {
+                                int freeBytes = bufferSize - totalBytes;
+                                int newBytes = socket.Receive(buffer, freeBytes, SocketFlags.None);
+
+                                if (newBytes > 0) {
+                                    totalBytes += newBytes;
+                                } else if (newBytes < 0) {
+                                    Respond(500, String.Format("Transfer failed: Receive() returned {0}", newBytes));
+                                    return;
+                                } else {
+                                    // end of data
+                                    break;
+                                }
                             }
+
+                            // end of data
+                            if (totalBytes == 0)
+                                break;
 
                             if (transferDataType == DataType.IMAGE) {
                                 // TYPE I -> just pass through
-                                stream.Write(buffer, 0, bytes);
+                                stream.Write(buffer, 0, totalBytes);
                             } else {
                                 // TYPE A -> convert CRLF to local EOL style
 
                                 // if the buffer ends with a potential partial CRLF,
                                 // try to read the LF
-                                if (buffer[bytes - 1] == remoteEolBytes[0]) {
-                                    if (socket.Receive(buffer, bytes, 1, SocketFlags.None) == 1)
-                                        ++bytes;
+                                if (buffer[totalBytes - 1] == remoteEolBytes[0]) {
+                                    if (socket.Receive(buffer, totalBytes, 1, SocketFlags.None) == 1)
+                                        ++totalBytes;
                                 }
 
                                 byte[] convBuffer = null;
-                                int convBytes = ConvertAsciiBytes(buffer, bytes, false, out convBuffer);
+                                int convBytes = ConvertAsciiBytes(buffer, totalBytes, false, out convBuffer);
                                 stream.Write(convBuffer, 0, convBytes);
                             }
                         }
