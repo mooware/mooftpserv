@@ -18,15 +18,15 @@ namespace mooftpserv
         enum DataType { ASCII, IMAGE };
 
         // version from AssemblyInfo
-        private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
+        private const string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
         // monthnames for LIST command, since DateTime returns localized names
-        private static string[] MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+        private const string[] MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         // response text for initial response. preceeded by application name and version number.
-        private static string[] HELLO_TEXT = { "What can I do for you?", "Good day, sir or madam.", "Hey ho let's go!", "The poor man's FTP server." };
+        private const string[] HELLO_TEXT = { "What can I do for you?", "Good day, sir or madam.", "Hey ho let's go!", "The poor man's FTP server." };
         // response text for general ok messages
-        private static string[] OK_TEXT = { "Sounds good.", "Success!", "Alright, I'll do it...", "Consider it done." };
+        private const string[] OK_TEXT = { "Sounds good.", "Success!", "Alright, I'll do it...", "Consider it done." };
         // Result for FEAT command
-        private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "TVFS", "UTF8" };
+        private const string[] FEATURES = { "MDTM", "PASV", "SIZE", "TVFS", "UTF8" };
 
         // socket for the control connection
         private Socket controlSocket;
