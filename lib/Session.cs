@@ -18,17 +18,17 @@ namespace mooftpserv
         enum DataType { ASCII, IMAGE };
 
         // buffer size to use for reading commands from the control connection
-        private const int CMD_BUFFER_SIZE = 4096;
+        private static int CMD_BUFFER_SIZE = 4096;
         // version from AssemblyInfo
-        private const string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
+        private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
         // monthnames for LIST command, since DateTime returns localized names
-        private const string[] MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+        private static string[] MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         // response text for initial response. preceeded by application name and version number.
-        private const string[] HELLO_TEXT = { "What can I do for you?", "Good day, sir or madam.", "Hey ho let's go!", "The poor man's FTP server." };
+        private static string[] HELLO_TEXT = { "What can I do for you?", "Good day, sir or madam.", "Hey ho let's go!", "The poor man's FTP server." };
         // response text for general ok messages
-        private const string[] OK_TEXT = { "Sounds good.", "Success!", "Alright, I'll do it...", "Consider it done." };
+        private static string[] OK_TEXT = { "Sounds good.", "Success!", "Alright, I'll do it...", "Consider it done." };
         // Result for FEAT command
-        private const string[] FEATURES = { "MDTM", "PASV", "SIZE", "TVFS", "UTF8" };
+        private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "TVFS", "UTF8" };
 
         // socket for the control connection
         private Socket controlSocket;
