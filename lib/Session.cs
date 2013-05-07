@@ -33,7 +33,7 @@ namespace mooftpserv
         // socket for the control connection
         private Socket controlSocket;
         // buffer size to use for sending/receiving with data connections
-        private int bufferSize;
+        private int dataBufferSize;
         // auth handler, checks user credentials
         private IAuthHandler authHandler;
         // file system handler, implements file system access for the FTP commands
@@ -66,6 +66,8 @@ namespace mooftpserv
         private byte[] cmdRcvBuffer;
         // number of bytes in the cmdRcvBuffer
         private int cmdRcvBytes;
+        // buffer for sending/receiving with data connections
+        private byte[] dataBuffer;
         // data type of the session, can be changed by the client
         private DataType transferDataType = DataType.ASCII;
         // local EOL flavor
@@ -79,13 +81,15 @@ namespace mooftpserv
         public Session(Socket socket, int bufferSize, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
         {
             this.controlSocket = socket;
-            this.bufferSize = bufferSize;
+            this.dataBufferSize = bufferSize;
             this.authHandler = authHandler;
             this.fsHandler = fileSystemHandler;
             this.logHandler = logHandler;
+
             this.peerEndPoint = (IPEndPoint) socket.RemoteEndPoint;
             this.cmdRcvBuffer = new byte[CMD_BUFFER_SIZE];
             this.cmdRcvBytes = 0;
+            this.dataBuffer = new byte[dataBufferSize + 1]; // +1 for partial EOL
             this.randomTextIndex = new Random();
 
             this.thread = new Thread(new ThreadStart(this.Work));
@@ -594,17 +598,16 @@ namespace mooftpserv
                     // on Windows, no ASCII conversion is necessary (CRLF == CRLF)
                     bool noAsciiConv = (localEolBytes == remoteEolBytes);
 
-                    byte[] buffer = new byte[bufferSize + 1]; // +1 for partial EOL
                     try {
                         while (true) {
-                            int bytes = stream.Read(buffer, 0, bufferSize);
+                            int bytes = stream.Read(dataBuffer, 0, dataBufferSize);
                             if (bytes <= 0) {
                                 break;
                             }
 
                             if (transferDataType == DataType.IMAGE || noAsciiConv) {
                                 // TYPE I -> just pass through
-                                socket.Send(buffer, bytes, SocketFlags.None);
+                                socket.Send(dataBuffer, bytes, SocketFlags.None);
                             } else {
                                 // TYPE A -> convert local EOL style to CRLF
 
@@ -612,13 +615,13 @@ namespace mooftpserv
                                 // try to read the rest of the EOL
                                 // (i assume that the EOL has max. two bytes)
                                 if (localEolBytes.Length == 2 &&
-                                    buffer[bytes - 1] == localEolBytes[0]) {
-                                    if (stream.Read(buffer, bytes, 1) == 1)
+                                    dataBuffer[bytes - 1] == localEolBytes[0]) {
+                                    if (stream.Read(dataBuffer, bytes, 1) == 1)
                                         ++bytes;
                                 }
 
                                 byte[] convBuffer = null;
-                                int convBytes = ConvertAsciiBytes(buffer, bytes, true, out convBuffer);
+                                int convBytes = ConvertAsciiBytes(dataBuffer, bytes, true, out convBuffer);
                                 socket.Send(convBuffer, convBytes, SocketFlags.None);
                             }
                         }
@@ -657,13 +660,12 @@ namespace mooftpserv
                         logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
                     try {
-                        byte[] buffer = new byte[bufferSize + 1]; // +1 for partial CRLF
                         while (true) {
                             // fill up the in-memory buffer before writing to disk
                             int totalBytes = 0;
-                            while (totalBytes < bufferSize) {
-                                int freeBytes = bufferSize - totalBytes;
-                                int newBytes = socket.Receive(buffer, freeBytes, SocketFlags.None);
+                            while (totalBytes < dataBufferSize) {
+                                int freeBytes = dataBufferSize - totalBytes;
+                                int newBytes = socket.Receive(dataBuffer, freeBytes, SocketFlags.None);
 
                                 if (newBytes > 0) {
                                     totalBytes += newBytes;
@@ -682,19 +684,19 @@ namespace mooftpserv
 
                             if (transferDataType == DataType.IMAGE) {
                                 // TYPE I -> just pass through
-                                stream.Write(buffer, 0, totalBytes);
+                                stream.Write(dataBuffer, 0, totalBytes);
                             } else {
                                 // TYPE A -> convert CRLF to local EOL style
 
                                 // if the buffer ends with a potential partial CRLF,
                                 // try to read the LF
-                                if (buffer[totalBytes - 1] == remoteEolBytes[0]) {
-                                    if (socket.Receive(buffer, totalBytes, 1, SocketFlags.None) == 1)
+                                if (dataBuffer[totalBytes - 1] == remoteEolBytes[0]) {
+                                    if (socket.Receive(dataBuffer, totalBytes, 1, SocketFlags.None) == 1)
                                         ++totalBytes;
                                 }
 
                                 byte[] convBuffer = null;
-                                int convBytes = ConvertAsciiBytes(buffer, totalBytes, false, out convBuffer);
+                                int convBytes = ConvertAsciiBytes(dataBuffer, totalBytes, false, out convBuffer);
                                 stream.Write(convBuffer, 0, convBytes);
                             }
                         }
