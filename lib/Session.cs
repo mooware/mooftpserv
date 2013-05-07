@@ -92,7 +92,9 @@ namespace mooftpserv
 
         private void Work()
         {
-            logHandler.NewControlConnection(peerEndPoint);
+            if (logHandler != null)
+                logHandler.NewControlConnection(peerEndPoint);
+
             try {
                 Respond(220, String.Format("This is mooftpserv v{0}. {1}", LIB_VERSION, GetRandomText(HELLO_TEXT)));
 
@@ -138,7 +140,9 @@ namespace mooftpserv
                 if (controlSocket.Connected)
                     controlSocket.Close();
 
-                logHandler.ClosedControlConnection(peerEndPoint);
+                if (logHandler != null)
+                    logHandler.ClosedControlConnection(peerEndPoint);
+
                 threadAlive = false;
             }
         }
@@ -442,7 +446,8 @@ namespace mooftpserv
             verb = tokens[0].ToUpper(); // commands are case insensitive
             args = (tokens.Length > 1 ? String.Join(" ", tokens, 1, tokens.Length - 1) : null);
 
-            logHandler.ReceivedCommand(peerEndPoint, verb, args);
+            if (logHandler != null)
+                logHandler.ReceivedCommand(peerEndPoint, verb, args);
 
             return true;
         }
@@ -459,7 +464,8 @@ namespace mooftpserv
             byte[] sendBuffer = EncodeString(response);
             controlSocket.Send(sendBuffer);
 
-            logHandler.SentResponse(peerEndPoint, code, desc);
+            if (logHandler != null)
+                logHandler.SentResponse(peerEndPoint, code, desc);
         }
 
         private void Respond(uint code, string desc)
@@ -509,7 +515,9 @@ namespace mooftpserv
                     IPEndPoint remote = (IPEndPoint) socket.RemoteEndPoint;
                     IPEndPoint local = (IPEndPoint) socket.LocalEndPoint;
                     bool passive = (dataPort == null);
-                    logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
+
+                    if (logHandler != null)
+                        logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
                     // on Windows, no ASCII conversion is necessary (CRLF == CRLF)
                     bool noAsciiConv = (localEolBytes == remoteEolBytes);
@@ -550,7 +558,8 @@ namespace mooftpserv
                         Respond(500, ex);
                         return;
                     } finally {
-                        logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
+                        if (logHandler != null)
+                            logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
                     }
                 }
             } finally {
@@ -568,7 +577,9 @@ namespace mooftpserv
                     IPEndPoint remote = (IPEndPoint) socket.RemoteEndPoint;
                     IPEndPoint local = (IPEndPoint) socket.LocalEndPoint;
                     bool passive = (dataPort == null);
-                    logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
+
+                    if (logHandler != null)
+                        logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
                     try {
                         byte[] buffer = new byte[BUFFER_SIZE + 1]; // +1 for partial CRLF
@@ -606,7 +617,8 @@ namespace mooftpserv
                         Respond(500, ex);
                         return;
                     } finally {
-                        logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
+                        if (logHandler != null)
+                            logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
                     }
                 }
             } finally {
