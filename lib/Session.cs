@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace mooftpserv
 {
-    public class Session
+    class Session
     {
         // transfer data type, ascii or binary
         enum DataType { ASCII, IMAGE };
