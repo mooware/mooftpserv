@@ -46,7 +46,7 @@ namespace mooftpserv
 
         public ResultOrError<string> GetCurrentDirectory()
         {
-            return ResultOrError<string>.MakeResult(currentPath);
+            return MakeResult<string>(currentPath);
         }
 
         public ResultOrError<string> ChangeDirectory(string path)
@@ -57,16 +57,16 @@ namespace mooftpserv
             // special fake root for WinNT drives
             if (os == OS.WinNT && newPath == "/") {
                 currentPath = newPath;
-                return ResultOrError<string>.MakeResult(newPath);
+                return MakeResult<string>(newPath);
             }
 #endif
 
             string realPath = DecodePath(newPath);
             if (!Directory.Exists(realPath))
-                return ResultOrError<string>.MakeError("Path does not exist.");
+                return MakeError<string>("Path does not exist.");
 
             currentPath = newPath;
-            return ResultOrError<string>.MakeResult(newPath);
+            return MakeResult<string>(newPath);
         }
 
         public ResultOrError<string> ChangeToParentDirectory()
@@ -81,14 +81,14 @@ namespace mooftpserv
             try {
                 DirectoryInfo newDir = new DirectoryInfo(DecodePath(newPath));
                 if (newDir.Exists)
-                    return ResultOrError<string>.MakeError("Directory already exists.");
+                    return MakeError<string>("Directory already exists.");
 
                 newDir.Create();
             } catch (Exception ex) {
-                return ResultOrError<string>.MakeError(ex.Message);
+                return MakeError<string>(ex.Message);
             }
 
-            return ResultOrError<string>.MakeResult(newPath);
+            return MakeResult<string>(newPath);
         }
 
         public ResultOrError<bool> RemoveDirectory(string path)
@@ -98,17 +98,17 @@ namespace mooftpserv
             try {
                 DirectoryInfo newDir = new DirectoryInfo(DecodePath(newPath));
                 if (!newDir.Exists)
-                    return ResultOrError<bool>.MakeError("Directory does not exist.");
+                    return MakeError<bool>("Directory does not exist.");
 
                 if (newDir.GetFileSystemInfos().Length > 0)
-                    return ResultOrError<bool>.MakeError("Directory is not empty.");
+                    return MakeError<bool>("Directory is not empty.");
 
                 newDir.Delete();
             } catch (Exception ex) {
-                return ResultOrError<bool>.MakeError(ex.Message);
+                return MakeError<bool>(ex.Message);
             }
 
-            return ResultOrError<bool>.MakeResult(true);
+            return MakeResult<bool>(true);
         }
 
         public ResultOrError<Stream> ReadFile(string path)
@@ -117,12 +117,12 @@ namespace mooftpserv
             string realPath = DecodePath(newPath);
 
             if (!File.Exists(realPath))
-                return ResultOrError<Stream>.MakeError("File does not exist.");
+                return MakeError<Stream>("File does not exist.");
 
             try {
-                return ResultOrError<Stream>.MakeResult(File.OpenRead(realPath));
+                return MakeResult<Stream>(File.OpenRead(realPath));
             } catch (Exception ex) {
-                return ResultOrError<Stream>.MakeError(ex.Message);
+                return MakeError<Stream>(ex.Message);
             }
         }
 
@@ -132,9 +132,9 @@ namespace mooftpserv
             string realPath = DecodePath(newPath);
 
             try {
-                return ResultOrError<Stream>.MakeResult(File.Open(realPath, FileMode.OpenOrCreate));
+                return MakeResult<Stream>(File.Open(realPath, FileMode.OpenOrCreate));
             } catch (Exception ex) {
-                return ResultOrError<Stream>.MakeError(ex.Message);
+                return MakeError<Stream>(ex.Message);
             }
         }
 
@@ -144,15 +144,15 @@ namespace mooftpserv
             string realPath = DecodePath(newPath);
 
             if (!File.Exists(realPath))
-                return ResultOrError<bool>.MakeError("File does not exist.");
+                return MakeError<bool>("File does not exist.");
 
             try {
                 File.Delete(realPath);
             } catch (Exception ex) {
-                return ResultOrError<bool>.MakeError(ex.Message);
+                return MakeError<bool>(ex.Message);
             }
 
-            return ResultOrError<bool>.MakeResult(true);
+            return MakeResult<bool>(true);
         }
 
         public ResultOrError<bool> RenameFile(string fromPath, string toPath)
@@ -161,18 +161,18 @@ namespace mooftpserv
             string realToPath = DecodePath(ResolvePath(toPath));
 
             if (!File.Exists(realFromPath) && !Directory.Exists(realFromPath))
-                return ResultOrError<bool>.MakeError("Source path does not exist.");
+                return MakeError<bool>("Source path does not exist.");
 
             if (File.Exists(realToPath) || Directory.Exists(realToPath))
-                return ResultOrError<bool>.MakeError("Target path already exists.");
+                return MakeError<bool>("Target path already exists.");
 
             try {
                 File.Move(realFromPath, realToPath);
             } catch (Exception ex) {
-                return ResultOrError<bool>.MakeError(ex.Message);
+                return MakeError<bool>(ex.Message);
             }
 
-            return ResultOrError<bool>.MakeResult(true);
+            return MakeResult<bool>(true);
         }
 
         public ResultOrError<FileSystemEntry[]> ListEntries(string path)
@@ -199,7 +199,7 @@ namespace mooftpserv
                     result.Add(entry);
                 }
 
-                return ResultOrError<FileSystemEntry[]>.MakeResult(result.ToArray());
+                return MakeResult<FileSystemEntry[]>(result.ToArray());
             }
 #endif
 
@@ -211,7 +211,7 @@ namespace mooftpserv
             else if (Directory.Exists(realPath))
                 files = new DirectoryInfo(realPath).GetFileSystemInfos();
             else
-                return ResultOrError<FileSystemEntry[]>.MakeError("Path does not exist.");
+                return MakeError<FileSystemEntry[]>("Path does not exist.");
 
             foreach (FileSystemInfo file in files) {
                 FileSystemEntry entry = new FileSystemEntry();
@@ -223,30 +223,30 @@ namespace mooftpserv
                 result.Add(entry);
             }
 
-            return ResultOrError<FileSystemEntry[]>.MakeResult(result.ToArray());
+            return MakeResult<FileSystemEntry[]>(result.ToArray());
         }
 
         public ResultOrError<long> GetFileSize(string path)
         {
             string realPath = DecodePath(ResolvePath(path));
             if (Directory.Exists(realPath))
-                return ResultOrError<long>.MakeError("Cannot get size of directory.");
+                return MakeError<long>("Cannot get size of directory.");
             else if (!File.Exists(realPath))
-                return ResultOrError<long>.MakeError("File does not exist.");
+                return MakeError<long>("File does not exist.");
 
             long size = new FileInfo(realPath).Length;
-            return ResultOrError<long>.MakeResult(size);
+            return MakeResult<long>(size);
         }
 
         public ResultOrError<DateTime> GetLastModifiedTimeUtc(string path)
         {
             string realPath = DecodePath(ResolvePath(path));
             if (!File.Exists(realPath))
-                return ResultOrError<DateTime>.MakeError("File does not exist.");
+                return MakeError<DateTime>("File does not exist.");
 
             // CF is missing FileInfo.LastWriteTimeUtc
             DateTime time = new FileInfo(realPath).LastWriteTime.ToUniversalTime();
-            return ResultOrError<DateTime>.MakeResult(time);
+            return MakeResult<DateTime>(time);
         }
 
         private string ResolvePath(string path)
@@ -289,6 +289,22 @@ namespace mooftpserv
             } else {
                 return path;
             }
+        }
+
+        /// <summary>
+        /// Shortcut for ResultOrError<T>.MakeResult()
+        /// </summary>
+        private ResultOrError<T> MakeResult<T>(T result)
+        {
+            return ResultOrError<T>.MakeResult(result);
+        }
+
+        /// <summary>
+        /// Shortcut for ResultOrError<T>.MakeError()
+        /// </summary>
+        private ResultOrError<T> MakeError<T>(string error)
+        {
+            return ResultOrError<T>.MakeError(error);
         }
     }
 }
