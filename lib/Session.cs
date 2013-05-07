@@ -7,6 +7,11 @@ using System.Threading;
 
 namespace mooftpserv
 {
+    /// <summary>
+    /// FTP session/connection. Does all the heavy lifting of the FTP protocol.
+    /// Reads commands, sends replies, manages data connections, and so on.
+    /// Each session creates its own thread.
+    /// </summary>
     class Session
     {
         // transfer data type, ascii or binary
@@ -23,29 +28,52 @@ namespace mooftpserv
         // Result for FEAT command
         private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "TVFS", "UTF8" };
 
+        // socket for the control connection
         private Socket controlSocket;
+        // buffer size to use sending/receiving with data connections
+        private int bufferSize;
+        // auth handler, checks user credentials
         private IAuthHandler authHandler;
+        // file system handler, implements file system access for the FTP commands
         private IFileSystemHandler fsHandler;
+        // log handler, used for diagnostic logging output. can be null.
         private ILogHandler logHandler;
+        // Session thread, the control and data connections are processed in this thread
         private Thread thread;
 
+        // .NET CF does not have Thread.IsAlive, so this flag replaces it
         private bool threadAlive = false;
+        // Random Number Generator for OK and HELLO texts
         private Random randomTextIndex;
+        // flag for whether the user has successfully logged in
         private bool loggedIn = false;
+        // name of the logged in user, also used to remember the username when waiting for the PASS command
         private string loggedInUser = null;
+        // argument of pending RNFR command, when waiting for an RNTO command
         private string renameFromPath = null;
 
         // remote data port. null when PASV is used.
         private IPEndPoint dataPort = null;
+        // socket for data connections
         private Socket dataSocket = null;
+        // .NET CF does not have Socket.Bound, so this flag replaces it
         private bool dataSocketBound = false;
+        // Endpoint of the connected client
         private IPEndPoint peerEndPoint;
+        // buffer for reading from the control connection
         private byte[] cmdRcvBuffer;
+        // number of bytes in the cmdRcvBuffer
         private int cmdRcvBytes;
+        // data type of the session, can be changed by the client
         private DataType transferDataType = DataType.ASCII;
+        // local EOL flavor
         private byte[] localEolBytes = Encoding.ASCII.GetBytes(Environment.NewLine);
+        // FTP-mandated EOL flavor (= CRLF)
         private byte[] remoteEolBytes = Encoding.ASCII.GetBytes("\r\n");
 
+        /// <summary>
+        /// Creates a new session, which can afterwards be started with Start().
+        /// </summary>
         public Session(Socket socket, int bufferSize, IAuthHandler authHandler, IFileSystemHandler fileSystemHandler, ILogHandler logHandler)
         {
             this.controlSocket = socket;
@@ -61,12 +89,17 @@ namespace mooftpserv
             this.thread = new Thread(new ThreadStart(this.Work));
         }
 
+        /// <summary>
+        /// Indicates whether the session is still open
+        /// </summary>
         public bool IsOpen
         {
-            // CF is missing Thread.IsAlive
             get { return threadAlive; }
         }
 
+        /// <summary>
+        /// Start the session in a new thread
+        /// </summary>
         public void Start()
         {
             if (!threadAlive) {
@@ -75,6 +108,9 @@ namespace mooftpserv
             }
         }
 
+        /// <summary>
+        /// Stop the session
+        /// </summary>
         public void Stop()
         {
             if (threadAlive) {
@@ -89,6 +125,10 @@ namespace mooftpserv
                 dataSocket.Close();
         }
 
+        /// <summary>
+        /// Main method of the session thread.
+        /// Reads commands and executes them.
+        /// </summary>
         private void Work()
         {
             if (logHandler != null)
@@ -146,6 +186,9 @@ namespace mooftpserv
             }
         }
 
+        /// <summary>
+        /// Process an FTP command.
+        /// </summary>
         private void ProcessCommand(string verb, string arguments)
         {
             switch (verb) {
@@ -401,6 +444,18 @@ namespace mooftpserv
             }
         }
 
+        /// <summary>
+        /// Read a command from the control connection.
+        /// </summary>
+        /// <returns>
+        /// True if a command was read.
+        /// </returns>
+        /// <param name='verb'>
+        /// Will receive the verb of the command.
+        /// </param>
+        /// <param name='args'>
+        /// Will receive the arguments of the command, or null.
+        /// </param>
         private bool ReadCommand(out string verb, out string args)
         {
             verb = null;
@@ -451,6 +506,9 @@ namespace mooftpserv
             return true;
         }
 
+        /// <summary>
+        /// Send a response on the control connection
+        /// </summary>
         private void Respond(uint code, string desc, bool moreFollows)
         {
             string response = code.ToString();
@@ -467,16 +525,26 @@ namespace mooftpserv
                 logHandler.SentResponse(peerEndPoint, code, desc);
         }
 
+        /// <summary>
+        /// Send a response on the control connection
+        /// </summary>
         private void Respond(uint code, string desc)
         {
             Respond(code, desc, false);
         }
 
+        /// <summary>
+        /// Send a response on the control connection, with an exception as text
+        /// </summary>
         private void Respond(uint code, Exception ex)
         {
             Respond(code, ex.Message.Replace(Environment.NewLine, " "));
         }
 
+        /// <summary>
+        /// Process FTP commands when the user is not yet logged in.
+        /// Mostly handles the login commands USER and PASS.
+        /// </summary>
         private void HandleAuth(string verb, string args)
         {
             if (verb == "USER" && args != null) {
@@ -504,6 +572,9 @@ namespace mooftpserv
             }
         }
 
+        /// <summary>
+        /// Read from the given stream and send the data over a data connection
+        /// </summary>
         private void SendData(Stream stream)
         {
             try {
@@ -566,6 +637,9 @@ namespace mooftpserv
             }
         }
 
+        /// <summary>
+        /// Read from a data connection and write to the given stream
+        /// </summary>
         private void ReceiveData(Stream stream)
         {
             try {
@@ -625,6 +699,13 @@ namespace mooftpserv
             }
         }
 
+        /// <summary>
+        /// Create a socket for a data connection.
+        /// </summary>
+        /// <param name='listen'>
+        /// If true, the socket will be bound to a local port for the PASV command.
+        /// Otherwise the socket can be used for connecting to the address given in a PORT command.
+        /// </param>
         private void CreateDataSocket(bool listen)
         {
             if (dataSocket != null)
@@ -640,6 +721,10 @@ namespace mooftpserv
             }
         }
 
+        /// <summary>
+        /// Opens an active or passive data connection and returns the socket
+        /// or null if there was no preceding PORT or PASV command or in case or error.
+        /// </summary>
         private Socket OpenDataConnection()
         {
             if (dataPort == null && !dataSocketBound) {
@@ -668,6 +753,26 @@ namespace mooftpserv
             }
         }
 
+        /// <summary>
+        /// Convert between different EOL flavors.
+        /// </summary>
+        /// <returns>
+        /// The number of bytes in the resultBuffer.
+        /// </returns>
+        /// <param name='buffer'>
+        /// The input buffer whose data will be converted.
+        /// </param>
+        /// <param name='len'>
+        /// The number of bytes in the input buffer.
+        /// </param>
+        /// <param name='localToRemote'>
+        /// If true, the conversion will be made from local to FTP flavor,
+        /// otherwise from FTP to local flavor.
+        /// </param>
+        /// <param name='resultBuffer'>
+        /// The resulting buffer with the converted text.
+        /// Can be the same reference as the input buffer if there is nothing to convert.
+        /// </param>
         private int ConvertAsciiBytes(byte[] buffer, int len, bool localToRemote, out byte[] resultBuffer)
         {
             byte[] fromBytes = (localToRemote ? localEolBytes : remoteEolBytes);
@@ -725,6 +830,9 @@ namespace mooftpserv
             return resultLen;
         }
 
+        /// <summary>
+        /// Parse the argument of a PORT command into an IPEndPoint
+        /// </summary>
         private IPEndPoint ParseAddress(string address)
         {
             string[] tokens = address.Split(',');
@@ -743,6 +851,9 @@ namespace mooftpserv
             return new IPEndPoint(ip, port);
         }
 
+        /// <summary>
+        /// Format an IPEndPoint so that it can be used in a response for a PASV command
+        /// </summary>
         private string FormatAddress(IPEndPoint address)
         {
             byte[] ip = address.Address.GetAddressBytes();
@@ -753,6 +864,9 @@ namespace mooftpserv
                                  (port & 0xFF00) >> 8, port & 0x00FF);
         }
 
+        /// <summary>
+        /// Formats a list of file system entries for a response to a LIST or STAT command
+        /// </summary>
         private string FormatDirList(FileSystemEntry[] list)
         {
             int maxSizeChars = 0;
@@ -780,11 +894,17 @@ namespace mooftpserv
             return result;
         }
 
+        /// <summary>
+        /// Format a timestamp for a reponse to a MDTM command
+        /// </summary>
         private string FormatTime(DateTime time)
         {
             return time.ToString("yyyyMMddHHmmss");
         }
 
+        /// <summary>
+        /// Restrict the year in a timestamp to >= 1970
+        /// </summary>
         private DateTime EnsureUnixTime(DateTime time)
         {
             // the server claims to be UNIX, so there should be
@@ -798,12 +918,18 @@ namespace mooftpserv
               return time;
         }
 
+        /// <summary>
+        /// Escape a path for a response to a PWD command
+        /// </summary>
         private string EscapePath(string path)
         {
             // double-quotes in paths are escaped by doubling them
             return '"' + path.Replace("\"", "\"\"") + '"';
         }
 
+        /// <summary>
+        /// Remove "-a" or "-l" from the arguments for a LIST or STAT command
+        /// </summary>
         private string RemoveLsArgs(string args)
         {
             if (args != null && (args.StartsWith("-a") || args.StartsWith("-l"))) {
@@ -816,26 +942,41 @@ namespace mooftpserv
             return args;
         }
 
+        /// <summary>
+        /// Convert a string to a list of UTF8 bytes
+        /// </summary>
         private byte[] EncodeString(string data)
         {
             return Encoding.UTF8.GetBytes(data);
         }
 
+        /// <summary>
+        /// Convert a list of UTF8 bytes to a string
+        /// </summary>
         private string DecodeString(byte[] data, int len)
         {
             return Encoding.UTF8.GetString(data, 0, len);
         }
 
+        /// <summary>
+        /// Convert a list of UTF8 bytes to a string
+        /// </summary>
         private string DecodeString(byte[] data)
         {
             return DecodeString(data, data.Length);
         }
 
+        /// <summary>
+        /// Fill a stream with the given string as UTF8 bytes
+        /// </summary>
         private Stream MakeStream(string data)
         {
             return new MemoryStream(EncodeString(data));
         }
 
+        /// <summary>
+        /// Return a randomly selected text from the given list
+        /// </summary>
         private string GetRandomText(string[] texts)
         {
             int index = randomTextIndex.Next(0, texts.Length);
