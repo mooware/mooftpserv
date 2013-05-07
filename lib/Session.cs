@@ -18,7 +18,7 @@ namespace mooftpserv
         enum DataType { ASCII, IMAGE };
 
         // version from AssemblyInfo
-        private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        private static string LIB_VERSION = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
         // monthnames for LIST command, since DateTime returns localized names
         private static string[] MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         // response text for initial response. preceeded by application name and version number.
