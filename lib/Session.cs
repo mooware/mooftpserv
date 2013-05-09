@@ -30,6 +30,13 @@ namespace mooftpserv
         // Result for FEAT command
         private static string[] FEATURES = { "MDTM", "PASV", "SIZE", "TVFS", "UTF8" };
 
+        // local EOL flavor
+        private static byte[] localEolBytes = Encoding.ASCII.GetBytes(Environment.NewLine);
+        // FTP-mandated EOL flavor (= CRLF)
+        private static byte[] remoteEolBytes = Encoding.ASCII.GetBytes("\r\n");
+        // on Windows, no ASCII conversion is necessary (CRLF == CRLF)
+        private static bool noAsciiConv = (localEolBytes == remoteEolBytes);
+
         // socket for the control connection
         private Socket controlSocket;
         // buffer size to use for sending/receiving with data connections
@@ -70,10 +77,6 @@ namespace mooftpserv
         private byte[] dataBuffer;
         // data type of the session, can be changed by the client
         private DataType transferDataType = DataType.ASCII;
-        // local EOL flavor
-        private byte[] localEolBytes = Encoding.ASCII.GetBytes(Environment.NewLine);
-        // FTP-mandated EOL flavor (= CRLF)
-        private byte[] remoteEolBytes = Encoding.ASCII.GetBytes("\r\n");
 
         /// <summary>
         /// Creates a new session, which can afterwards be started with Start().
@@ -595,9 +598,6 @@ namespace mooftpserv
                     if (logHandler != null)
                         logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
 
-                    // on Windows, no ASCII conversion is necessary (CRLF == CRLF)
-                    bool noAsciiConv = (localEolBytes == remoteEolBytes);
-
                     try {
                         while (true) {
                             int bytes = stream.Read(dataBuffer, 0, dataBufferSize);
@@ -682,7 +682,7 @@ namespace mooftpserv
                             if (totalBytes == 0)
                                 break;
 
-                            if (transferDataType == DataType.IMAGE) {
+                            if (transferDataType == DataType.IMAGE || noAsciiConv) {
                                 // TYPE I -> just pass through
                                 stream.Write(dataBuffer, 0, totalBytes);
                             } else {
