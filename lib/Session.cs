@@ -665,7 +665,7 @@ namespace mooftpserv
                             int totalBytes = 0;
                             while (totalBytes < dataBufferSize) {
                                 int freeBytes = dataBufferSize - totalBytes;
-                                int newBytes = socket.Receive(dataBuffer, freeBytes, SocketFlags.None);
+                                int newBytes = socket.Receive(dataBuffer, totalBytes, freeBytes, SocketFlags.None);
 
                                 if (newBytes > 0) {
                                     totalBytes += newBytes;
