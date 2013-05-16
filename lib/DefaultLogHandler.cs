@@ -12,16 +12,17 @@ namespace mooftpserv
     /// </summary>
     public class DefaultLogHandler : ILogHandler
     {
-        private TextWriter Out;
-        private bool Verbose;
+        private IPEndPoint peer;
+        private TextWriter writer;
+        private bool verbose;
 
-        public DefaultLogHandler(TextWriter Output, bool Verbose)
+        public DefaultLogHandler(TextWriter writer, bool verbose)
         {
-            this.Out = Output;
-            this.Verbose = Verbose;
+            this.writer = writer;
+            this.verbose = verbose;
         }
 
-        public DefaultLogHandler(bool Verbose) : this(Console.Out, Verbose)
+        public DefaultLogHandler(bool verbose) : this(Console.Out, verbose)
         {
         }
 
@@ -29,46 +30,58 @@ namespace mooftpserv
         {
         }
 
-        private void Write(IPEndPoint peer, string format, params object[] args)
+        private DefaultLogHandler(IPEndPoint peer, TextWriter writer, bool verbose)
+        {
+            this.peer = peer;
+            this.writer = writer;
+            this.verbose = verbose;
+        }
+
+        public ILogHandler Clone(IPEndPoint peer)
+        {
+            return new DefaultLogHandler(peer, writer, verbose);
+        }
+
+        private void Write(string format, params object[] args)
         {
             string now = DateTime.Now.ToString("HH:mm:ss.fff");
-            Out.WriteLine(String.Format("{0}, {1}: {2}", now, peer, String.Format(format, args)));
+            writer.WriteLine(String.Format("{0}, {1}: {2}", now, peer, String.Format(format, args)));
         }
 
-        public void NewControlConnection(IPEndPoint peer)
+        public void NewControlConnection()
         {
-            Write(peer, "new control connection");
+            Write("new control connection");
         }
 
-        public void ClosedControlConnection(IPEndPoint peer)
+        public void ClosedControlConnection()
         {
-            Write(peer, "closed control connection");
+            Write("closed control connection");
         }
 
-        public void ReceivedCommand(IPEndPoint peer, string verb, string arguments)
+        public void ReceivedCommand(string verb, string arguments)
         {
-            if (Verbose) {
+            if (verbose) {
                 string argtext = (arguments == null || arguments == "" ? "" : ' ' + arguments);
-                Write(peer, "received command: {0}{1}", verb, argtext);
+                Write("received command: {0}{1}", verb, argtext);
             }
         }
 
-        public void SentResponse(IPEndPoint peer, uint code, string description)
+        public void SentResponse(uint code, string description)
         {
-            if (Verbose)
-                Write(peer, "sent response: {0} {1}", code, description);
+            if (verbose)
+                Write("sent response: {0} {1}", code, description);
         }
 
-        public void NewDataConnection(IPEndPoint peer, IPEndPoint remote, IPEndPoint local, bool passive)
+        public void NewDataConnection(IPEndPoint remote, IPEndPoint local, bool passive)
         {
-            if (Verbose)
-                Write(peer, "new data connection: {0} <-> {1} ({2})", remote, local, (passive ? "passive" : "active"));
+            if (verbose)
+                Write("new data connection: {0} <-> {1} ({2})", remote, local, (passive ? "passive" : "active"));
         }
 
-        public void ClosedDataConnection(IPEndPoint peer, IPEndPoint remote, IPEndPoint local, bool passive)
+        public void ClosedDataConnection(IPEndPoint remote, IPEndPoint local, bool passive)
         {
-            if (Verbose)
-                Write(peer, "closed data connection: {0} <-> {1} ({2})", remote, local, (passive ? "passive" : "active"));
+            if (verbose)
+                Write("closed data connection: {0} <-> {1} ({2})", remote, local, (passive ? "passive" : "active"));
         }
     }
 }

@@ -9,13 +9,20 @@ namespace mooftpserv
     /// </summary>
     public class DefaultAuthHandler : IAuthHandler
     {
+        private IPEndPoint peer;
+
         public DefaultAuthHandler()
         {
         }
 
-        public IAuthHandler Clone()
+        private DefaultAuthHandler(IPEndPoint peer)
         {
-            return new DefaultAuthHandler();
+          this.peer = peer;
+        }
+
+        public IAuthHandler Clone(IPEndPoint peer)
+        {
+            return new DefaultAuthHandler(peer);
         }
 
         public bool AllowLogin(string user, string pass)
@@ -23,12 +30,12 @@ namespace mooftpserv
             return (user == "anonymous");
         }
 
-        public bool AllowControlConnection(IPEndPoint peer)
+        public bool AllowControlConnection()
         {
             return true;
         }
 
-        public bool AllowActiveDataConnection(IPEndPoint peer, IPEndPoint port)
+        public bool AllowActiveDataConnection(IPEndPoint port)
         {
             // only allow active connections to the same peer as the control connection
             return peer.Address.Equals(port.Address);

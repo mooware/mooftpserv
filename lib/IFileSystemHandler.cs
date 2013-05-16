@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.IO;
 
 namespace mooftpserv
@@ -67,9 +68,10 @@ namespace mooftpserv
     public interface IFileSystemHandler
     {
         /// <summary>
-        /// Clone this instance. Each FTP session uses a separate, cloned instance.
+        /// Make a new instance for a new session with the given peer.
+        /// Each FTP session uses a separate, cloned instance.
         /// </summary>
-        IFileSystemHandler Clone();
+        IFileSystemHandler Clone(IPEndPoint peer);
 
         /// <summary>
         /// PWD: Returns the path of the current working directory.

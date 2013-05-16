@@ -9,9 +9,10 @@ namespace mooftpserv
     public interface IAuthHandler
     {
         /// <summary>
-        /// Clone this instance. Each FTP session uses a separate, cloned instance.
+        /// Make a new instance for a new session with the given peer.
+        /// Each FTP session uses a separate, cloned instance.
         /// </summary>
-        IAuthHandler Clone();
+        IAuthHandler Clone(IPEndPoint peer);
 
         /// <summary>
         /// Check the given login. Note that the method can be called in three ways:
@@ -28,21 +29,17 @@ namespace mooftpserv
         bool AllowLogin(string user, string pass);
 
         /// <summary>
-        /// Check if a control connection from the given peer should be allowed.
+        /// Check if a control connection from the peer should be allowed.
         /// </summary>
-        bool AllowControlConnection(IPEndPoint peer);
+        bool AllowControlConnection();
 
         /// <summary>
-        /// Check if the PORT command of the given client with the given
+        /// Check if the PORT command of the peer with the given
         /// target endpoint should be allowed.
         /// </summary>
-        /// <param name='peer'>
-        /// The peer of the control connection on which the PORT command was issued.
-        /// </param>
-        /// <param name='port'>
         /// The argument given by the peer in the PORT command.
         /// </param>
-        bool AllowActiveDataConnection(IPEndPoint peer, IPEndPoint target);
+        bool AllowActiveDataConnection(IPEndPoint target);
     }
 }
 

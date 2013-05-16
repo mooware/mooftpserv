@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.IO;
 
 namespace mooftpserv
@@ -39,7 +40,7 @@ namespace mooftpserv
           this.os = os;
         }
 
-        public IFileSystemHandler Clone()
+        public IFileSystemHandler Clone(IPEndPoint peer)
         {
             return new DefaultFileSystemHandler(currentPath, os);
         }

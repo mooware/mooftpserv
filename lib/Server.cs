@@ -125,8 +125,14 @@ namespace mooftpserv
             try {
                 while (true)
                 {
-                    Socket client = socket.AcceptSocket();
-                    Session session = new Session(client, bufferSize, authHandler.Clone(), fsHandler.Clone(), logHandler);
+                    Socket peer = socket.AcceptSocket();
+
+                    IPEndPoint peerPort = (IPEndPoint) peer.RemoteEndPoint;
+                    Session session = new Session(peer, bufferSize,
+                                                  authHandler.Clone(peerPort),
+                                                  fsHandler.Clone(peerPort),
+                                                  logHandler.Clone(peerPort));
+
                     session.Start();
                     sessions.Add(session);
 

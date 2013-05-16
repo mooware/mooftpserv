@@ -67,8 +67,6 @@ namespace mooftpserv
         private Socket dataSocket = null;
         // .NET CF does not have Socket.Bound, so this flag replaces it
         private bool dataSocketBound = false;
-        // Endpoint of the connected client
-        private IPEndPoint peerEndPoint;
         // buffer for reading from the control connection
         private byte[] cmdRcvBuffer;
         // number of bytes in the cmdRcvBuffer
@@ -89,7 +87,6 @@ namespace mooftpserv
             this.fsHandler = fileSystemHandler;
             this.logHandler = logHandler;
 
-            this.peerEndPoint = (IPEndPoint) socket.RemoteEndPoint;
             this.cmdRcvBuffer = new byte[CMD_BUFFER_SIZE];
             this.cmdRcvBytes = 0;
             this.dataBuffer = new byte[dataBufferSize + 1]; // +1 for partial EOL
@@ -141,10 +138,10 @@ namespace mooftpserv
         private void Work()
         {
             if (logHandler != null)
-                logHandler.NewControlConnection(peerEndPoint);
+                logHandler.NewControlConnection();
 
             try {
-                if (!authHandler.AllowControlConnection(peerEndPoint)) {
+                if (!authHandler.AllowControlConnection()) {
                     Respond(421, "Control connection refused.");
                     // first flush, then close
                     controlSocket.Shutdown(SocketShutdown.Both);
@@ -197,7 +194,7 @@ namespace mooftpserv
                     controlSocket.Close();
 
                 if (logHandler != null)
-                    logHandler.ClosedControlConnection(peerEndPoint);
+                    logHandler.ClosedControlConnection();
 
                 threadAlive = false;
             }
@@ -268,7 +265,7 @@ namespace mooftpserv
                         break;
                     }
 
-                    if (!authHandler.AllowActiveDataConnection(peerEndPoint, port)) {
+                    if (!authHandler.AllowActiveDataConnection(port)) {
                         Respond(500, "PORT arguments refused.");
                         break;
                     }
@@ -517,7 +514,7 @@ namespace mooftpserv
             args = (tokens.Length > 1 ? String.Join(" ", tokens, 1, tokens.Length - 1) : null);
 
             if (logHandler != null)
-                logHandler.ReceivedCommand(peerEndPoint, verb, args);
+                logHandler.ReceivedCommand(verb, args);
 
             return true;
         }
@@ -538,7 +535,7 @@ namespace mooftpserv
             controlSocket.Send(sendBuffer);
 
             if (logHandler != null)
-                logHandler.SentResponse(peerEndPoint, code, desc);
+                logHandler.SentResponse(code, desc);
         }
 
         /// <summary>
@@ -603,7 +600,7 @@ namespace mooftpserv
                     bool passive = (dataPort == null);
 
                     if (logHandler != null)
-                        logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
+                        logHandler.NewDataConnection(remote, local, passive);
 
                     try {
                         while (true) {
@@ -641,7 +638,7 @@ namespace mooftpserv
                         return;
                     } finally {
                         if (logHandler != null)
-                            logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
+                            logHandler.ClosedDataConnection(remote, local, passive);
                     }
                 }
             } finally {
@@ -664,7 +661,7 @@ namespace mooftpserv
                     bool passive = (dataPort == null);
 
                     if (logHandler != null)
-                        logHandler.NewDataConnection(peerEndPoint, remote, local, passive);
+                        logHandler.NewDataConnection(remote, local, passive);
 
                     try {
                         while (true) {
@@ -715,7 +712,7 @@ namespace mooftpserv
                         return;
                     } finally {
                         if (logHandler != null)
-                            logHandler.ClosedDataConnection(peerEndPoint, remote, local, passive);
+                            logHandler.ClosedDataConnection(remote, local, passive);
                     }
                 }
             } finally {
