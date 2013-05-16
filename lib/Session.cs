@@ -144,6 +144,14 @@ namespace mooftpserv
                 logHandler.NewControlConnection(peerEndPoint);
 
             try {
+                if (!authHandler.AllowControlConnection(peerEndPoint)) {
+                    Respond(421, "Control connection refused.");
+                    // first flush, then close
+                    controlSocket.Shutdown(SocketShutdown.Both);
+                    controlSocket.Close();
+                    return;
+                }
+
                 Respond(220, String.Format("This is mooftpserv v{0}. {1}", LIB_VERSION, GetRandomText(HELLO_TEXT)));
 
                 // allow anonymous login?
@@ -260,9 +268,8 @@ namespace mooftpserv
                         break;
                     }
 
-                    IPAddress clientIP = ((IPEndPoint) controlSocket.RemoteEndPoint).Address;
-                    if (!port.Address.Equals(clientIP)) {
-                        Respond(500, "Specified IP differs from client IP");
+                    if (!authHandler.AllowActiveDataConnection(peerEndPoint, port)) {
+                        Respond(500, "PORT arguments refused.");
                         break;
                     }
 
