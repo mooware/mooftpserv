@@ -133,6 +133,13 @@ namespace mooftpserv
             string realPath = DecodePath(newPath);
 
             try {
+#if WindowsCE
+                // our flash filesystem on WinCE has issues
+                // when truncating files, so delete before writing.
+                if (File.Exists(realPath))
+                    File.Delete(realPath);
+#endif
+
                 return MakeResult<Stream>(File.Open(realPath, FileMode.OpenOrCreate));
             } catch (Exception ex) {
                 return MakeError<Stream>(ex.Message);
