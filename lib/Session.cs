@@ -611,13 +611,13 @@ namespace mooftpserv
         private void SendData(Stream stream)
         {
             try {
+                bool passive = (dataPort == null);
                 using (Socket socket = OpenDataConnection()) {
                     if (socket == null)
                         return;
 
                     IPEndPoint remote = (IPEndPoint) socket.RemoteEndPoint;
                     IPEndPoint local = (IPEndPoint) socket.LocalEndPoint;
-                    bool passive = (dataPort == null);
 
                     if (logHandler != null)
                         logHandler.NewDataConnection(remote, local, passive);
@@ -672,13 +672,13 @@ namespace mooftpserv
         private void ReceiveData(Stream stream)
         {
             try {
+                bool passive = (dataPort == null);
                 using (Socket socket = OpenDataConnection()) {
                     if (socket == null)
                         return;
 
                     IPEndPoint remote = (IPEndPoint) socket.RemoteEndPoint;
                     IPEndPoint local = (IPEndPoint) socket.LocalEndPoint;
-                    bool passive = (dataPort == null);
 
                     if (logHandler != null)
                         logHandler.NewDataConnection(remote, local, passive);
