@@ -290,6 +290,7 @@ namespace mooftpserv
                     Respond(227, String.Format("Switched to passive mode ({0})", port));
                     break;
                 }
+                case "XPWD":
                 case "PWD":
                 {
                     ResultOrError<string> ret = fsHandler.GetCurrentDirectory();
@@ -299,6 +300,7 @@ namespace mooftpserv
                         Respond(257, EscapePath(ret.Result));
                     break;
                 }
+                case "XCWD":
                 case "CWD":
                 {
                     ResultOrError<string> ret = fsHandler.ChangeDirectory(arguments);
@@ -308,6 +310,7 @@ namespace mooftpserv
                         Respond(200, GetRandomText(OK_TEXT));
                     break;
                 }
+                case "XCUP":
                 case "CDUP":
                 {
                     ResultOrError<string> ret = fsHandler.ChangeDirectory("..");
@@ -317,6 +320,7 @@ namespace mooftpserv
                         Respond(200, GetRandomText(OK_TEXT));
                     break;
                 }
+                case "XMKD":
                 case "MKD":
                 {
                     ResultOrError<string> ret = fsHandler.CreateDirectory(arguments);
@@ -326,6 +330,7 @@ namespace mooftpserv
                         Respond(257, EscapePath(ret.Result));
                     break;
                 }
+                case "XRMD":
                 case "RMD":
                 {
                     ResultOrError<bool> ret = fsHandler.RemoveDirectory(arguments);
@@ -442,6 +447,21 @@ namespace mooftpserv
 
                     Respond(213, "Status:\r\n" + FormatDirList(ret.Result), true);
                     Respond(213, "Status done.");
+                    break;
+                }
+                case "NLST":
+                {
+                    // remove common arguments, we do not support any of them
+                    arguments = RemoveLsArgs(arguments);
+
+                    ResultOrError<FileSystemEntry[]> ret = fsHandler.ListEntries(arguments);
+                    if (ret.HasError)
+                    {
+                        Respond(500, ret.Error);
+                        break;
+                    }
+
+                    SendData(MakeStream(FormatNLST(ret.Result)));
                     break;
                 }
                 case "NOOP":
@@ -897,7 +917,7 @@ namespace mooftpserv
 
             DateTime sixMonthsAgo = EnsureUnixTime(DateTime.Now.ToUniversalTime().AddMonths(-6));
 
-            string result = "";
+            StringBuilder result = new StringBuilder();
             foreach (FileSystemEntry entry in list) {
                 char dirflag = (entry.IsDirectory ? 'd' : '-');
                 string size = entry.Size.ToString().PadLeft(maxSizeChars);
@@ -908,11 +928,24 @@ namespace mooftpserv
                 else
                     timestr += time.ToString(" dd hh:mm");
 
-                result += String.Format("{0}rwxr--r-- 1 owner group {1} {2} {3}\r\n",
-                                        dirflag, size, timestr, entry.Name);
+                result.AppendFormat("{0}rwxr--r-- 1 owner group {1} {2} {3}\r\n",
+                                    dirflag, size, timestr, entry.Name);
             }
 
-            return result;
+            return result.ToString();
+        }
+
+        /// <summary>
+        /// Formats a list of file system entries for a response to an NLST command
+        /// </summary>
+        private string FormatNLST(FileSystemEntry[] list)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (FileSystemEntry entry in list) {
+                sb.Append(entry.Name);
+                sb.Append("\r\n");
+            }
+            return sb.ToString();
         }
 
         /// <summary>
