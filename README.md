@@ -28,10 +28,10 @@ The server implements only basic FTP commands. The following commands are suppor
     OPTS (only for OPTS UTF8 ON, which is always active anyway)
     SYST QUIT USER PASS FEAT
     TYPE PORT PASV
-    PWD CWD CDUP
-    MKD RMD RETR STOR DELE RNFR RNTO
+    PWD CWD CDUP XPWD XCWD XCUP
+    MKD RMD RETR STOR DELE RNFR RNTO XMKD XRMD
     MDTM SIZE
-    LIST
+    LIST NLST
     STAT (only with a path as argument, where it acts like LIST, but over the control connection)
     NOOP
 
