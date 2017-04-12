@@ -37,8 +37,7 @@ namespace mooftpserv
 
         public bool AllowActiveDataConnection(IPEndPoint port)
         {
-            // only allow active connections to the same peer as the control connection
-            return peer.Address.Equals(port.Address);
+            return true;
         }
     }
 }
