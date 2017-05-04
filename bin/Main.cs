@@ -12,16 +12,19 @@ namespace mooftpserv
         public static int Main(string[] args)
         {
             bool verbose = false;
+            bool anyPeer = false;
             int port = -1;
             int buffer = -1;
 
             // process args
             for (int i = 0; i < args.Length; ++i) {
                 if (args[i] == "-h" || args[i] == "--help") {
-                    Console.Out.WriteLine("Usage: <program> [-v|--verbose] [-p|--port <port>] [-b|--buffer <kbsize>]");
+                    Console.Out.WriteLine("Usage: <program> [-v|--verbose] [-p|--port <port>] [-b|--buffer <kbsize>] [-a|--any-peer]");
                     return 0;
                 } else if (args[i] == "-v" || args[i] == "--verbose") {
                     verbose = true;
+                } else if (args[i] == "-a" || args[i] == "--any-peer") {
+                    anyPeer = true;
                 } else if (args[i] == "-p" || args[i] == "--port") {
                     if (i == args.Length - 1) {
                         Console.Error.WriteLine("Too few arguments for {0}", args[i]);
@@ -57,6 +60,7 @@ namespace mooftpserv
             Server srv = new Server();
 
             srv.LogHandler = new DefaultLogHandler(verbose);
+            srv.AuthHandler = new DefaultAuthHandler(anyPeer);
 
             if (port != -1)
                 srv.LocalPort = port;

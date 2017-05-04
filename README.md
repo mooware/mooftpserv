@@ -10,13 +10,14 @@ Usage
 
 This repository includes a small executable that can be directly used as a command-line FTP server.
 
-    mooftpserv.exe [-h|--help] [-v|--verbose] [-p|--port <port>] [-b|--buffer <kbsize>]
+    mooftpserv.exe [-h|--help] [-v|--verbose] [-p|--port <port>] [-b|--buffer <kbsize>] [-a|--any-peer]
 
 **Options**
   - **-h | --help** Show the usage description
   - **-v | --verbose** More verbose logging
   - **-p | --port** TCP/IP server port on which to listen for new connections (default: 21)
   - **-b | --buffer** Size of the per-session data connection buffer (in kilobytes, default: 64)
+  - **-a | --any-peer** Allow data connections from/to any peer, instead of restricting to the same address as the control connection. (aka host-to-host transfers)
 
 The FTP server itself is implemented in a library, so that it can be embedded into other applications. Create an instance of `mooftpserv.Server` and call the synchronous `Run()` method to start the server.
 
@@ -51,7 +52,7 @@ Timestamps are always UTC. The control connection always uses UTF8, and the **LI
 
 One thread per control connection is used. Data connections also run in that thread, thus blocking their control connections.
 
-Server-to-server transfers are supported, and enabled by default. They can be disabled or restricted by allowing only data connections from the same address as the control connection, which can be implemented with an `IAuthHandler`.
+Server-to-server transfers are supported, but disabled by default. They can be disabled or restricted by allowing only data connections from the same address as the control connection, which can be implemented with an `IAuthHandler`.
 
 License
 -------
