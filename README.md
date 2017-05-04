@@ -44,7 +44,7 @@ There are some options for customization when used as a library, made available 
 
   - `LocalEndPoint`, `LocalAddress`, `LocalPort` to set the server address and port on which to listen for incoming connections (default: port 21, address 0.0.0.0 (or the first found non-loopback IP on Windows CE))
   - `BufferSize` to specify the size of the data connection buffer for each session (in kilobytes, default: 64)
-  - `AuthHandler` to provide a handler for authenticating users and authorizing control and data connections (default: `mooftpserv.DefaultAuthHandler`, accepts username "anonymous" without password, allows all connections)
+  - `AuthHandler` to provide a handler for authenticating users and authorizing control and data connections (default: `mooftpserv.DefaultAuthHandler`, accepts username "anonymous" without password, allows all control connections, and optionally all data connections)
   - `FileSystemHandler` to provide a handler for file system access (default: `mooftpserv.DefaultFileSystemHandler`, implements and allows access to the real file system, on Unix starting at "/", on Windows CE starting at "\", and on Windows NT starting with all available drives)
   - `LogHandler` to provide a handler for log output (default: null)
 
@@ -52,7 +52,7 @@ Timestamps are always UTC. The control connection always uses UTF8, and the **LI
 
 One thread per control connection is used. Data connections also run in that thread, thus blocking their control connections.
 
-Server-to-server transfers are supported, but disabled by default. They can be disabled or restricted by allowing only data connections from the same address as the control connection, which can be implemented with an `IAuthHandler`.
+Server-to-server transfers are supported, but disabled by default. They can be enabled in the `DefaultAuthHandler` or restricted by implementing a custom `IAuthHandler`.
 
 License
 -------
