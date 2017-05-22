@@ -168,14 +168,18 @@ namespace mooftpserv
             string realFromPath = DecodePath(ResolvePath(fromPath));
             string realToPath = DecodePath(ResolvePath(toPath));
 
-            if (!File.Exists(realFromPath) && !Directory.Exists(realFromPath))
+            bool isFile = File.Exists(realFromPath);
+            if (!isFile && !Directory.Exists(realFromPath))
                 return MakeError<bool>("Source path does not exist.");
 
             if (File.Exists(realToPath) || Directory.Exists(realToPath))
                 return MakeError<bool>("Target path already exists.");
 
             try {
-                File.Move(realFromPath, realToPath);
+                if (isFile)
+                    File.Move(realFromPath, realToPath);
+                else
+                    Directory.Move(realFromPath, realToPath);
             } catch (Exception ex) {
                 return MakeError<bool>(ex.Message);
             }
