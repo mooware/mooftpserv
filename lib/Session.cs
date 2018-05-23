@@ -109,8 +109,8 @@ namespace mooftpserv
         public void Start()
         {
             if (!threadAlive) {
-                this.thread.Start();
                 threadAlive = true;
+                this.thread.Start();
             }
         }
 
